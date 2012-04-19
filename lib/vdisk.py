@@ -9,6 +9,7 @@ Created on 2012-4-18
 import urllib, urllib2
 import json
 import time
+import os
 
 from errors import VdiskError
 from utils import hmac_sha256
@@ -58,9 +59,8 @@ class VdiskClient(object):
     
     def auth(self, account, password, app_type="local"):
         self.account, self.password = account, password
-        self.token = self.get_token(account, password, app_type)[0]
-        
-        self.dologid = self._base_oper('a=keep', {'token': self.token})
+        self.token = self.get_token(account, password, app_type)
+        self._base_oper('a=keep', {'token': self.token}) # init dologid
         
     def _base_oper(self, url_params, params, **kwargs):
         result = _call(url_params, params, **kwargs)
@@ -70,7 +70,7 @@ class VdiskClient(object):
         
         self.dologid = result['dologid']
         
-        return result['data'], result['dologdir']
+        return result.get('data'), result['dologdir']
     
     def get_token(self, account, password, app_type="local"):
         params = {
@@ -83,10 +83,49 @@ class VdiskClient(object):
         if app_type != 'local':
             params['app_type'] = app_type
             
-        return self._base_oper('m=auth&a=get_token', params)
+        result = _call('m=auth&a=get_token', params)
+        
+        if result['err_code'] != 0:
+            raise VdiskError(result['err_code'], result['err_msg'])
+        
+        return result['data']['token']
     
+    def keep(self):
+        self._base_oper('a=keep', {'token': self.token, 
+                                   'dologid': self.dologid})
+                                                  
     def keep_token(self):
-        self.dologid = self._base_oper('a=keep', {'token': self.token, 
-                                                  'dologid': self.dologid})[0]
+        return self._base_oper('m=user&a=keep_token', {'token': self.token, 
+                                                       'dologid': self.dologid})
+        
+    def upload_file(self, filename, dir_id, cover, maxsize=10, callback=None, dir=None):
+        try:
+            if os.path.getsize(filename) > maxsize * (1024 ** 2):
+                raise VdiskError(-1, 'The file is larger than %dM' % maxsize)
+        except os.error:
+            raise VdiskError(-1, 'Can\'t access the file')
+        
+        fp = open(filename, 'rb')
+        try:
+            params = {
+                      'token': self.token,
+                      'dir_id': dir_id,
+                      'cover': 'yes' if cover else 'no',
+                      'file': fp.read(),
+                      'dologid': self.dologid
+                      }
+            
+            if callback:
+                params['callback'] = callback
+            if dir:
+                params['dir'] = dir
+        finally:
+            fp.close()
+        
+        headers = {
+                   'Content-Type': 'multipart/form-data; boundary='
+                   }
+        
+        return self._base_oper('m=file&a=upload_file', params, headers=headers)
 
     
