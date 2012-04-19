@@ -54,6 +54,23 @@ class VdiskClient(object):
     def __init__(self, app_key, app_secret):
         self.app_key = app_key
         self.app_secret = app_secret
+        self.dologid = 0
+    
+    def auth(self, account, password, app_type="local"):
+        self.account, self.password = account, password
+        self.token = self.get_token(account, password, app_type)[0]
+        
+        self.dologid = self._base_oper('a=keep', {'token': self.token})
+        
+    def _base_oper(self, url_params, params, **kwargs):
+        result = _call(url_params, params, **kwargs)
+        
+        if result['err_code'] != 0:
+            raise VdiskError(result['err_code'], result['err_msg'])
+        
+        self.dologid = result['dologid']
+        
+        return result['data'], result['dologdir']
     
     def get_token(self, account, password, app_type="local"):
         params = {
@@ -66,10 +83,10 @@ class VdiskClient(object):
         if app_type != 'local':
             params['app_type'] = app_type
             
-        result = _call('m=auth&a=get_token', params)
-        if result['err_code'] != 0:
-            raise VdiskError(result['err_code'], result['err_msg'])
-        
-        return result['data']
+        return self._base_oper('m=auth&a=get_token', params)
+    
+    def keep_token(self):
+        self.dologid = self._base_oper('a=keep', {'token': self.token, 
+                                                  'dologid': self.dologid})[0]
 
     
