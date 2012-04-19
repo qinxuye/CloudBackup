@@ -136,10 +136,3 @@ class VdiskClient(object):
             return self._base_oper('m=file&a=upload_file', params, headers=headers)
         finally:
             fp.close()
-    
-if __name__ == "__main__":
-    client = VdiskClient('31070830', '54dcc04636122ed81c2ddd02a3ef4855')
-    client.auth("chinekingseu@gmail.com", "!jyp1122ily")
-    client.upload_file("C:\\Users\\Chine\\Desktop\\ip.txt", 0, True)
-
-    print 'succeed'
