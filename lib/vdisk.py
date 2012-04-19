@@ -12,7 +12,7 @@ import time
 import os
 
 from errors import VdiskError
-from utils import hmac_sha256
+from utils import hmac_sha256, encode_multipart
 
 __author__ = "Chine King"
 __description__ = "A client for vdisk api, site: http://vdisk.me/api/doc"
@@ -22,14 +22,20 @@ endpoint = "http://openapi.vdisk.me/"
 def _call(url_params, params, headers=None, method="POST", try_times=3, try_interval=3):
     def _get_data():
         if method == "GET":
-            full_params = "&".join((url_params, urllib.urlencode(params)))
+            if isinstance(params, str):
+                full_params = "&".join((url_params, params))
+            else:
+                full_params = "&".join((url_params, urllib.urlencode(params)))
             path = "%s?%s" %(endpoint, full_params)
             resp = urllib2.urlopen(path)
             return json.loads(resp.read())
         
         # if method is POST
         path = "%s?%s" % (endpoint, url_params)
-        encoded_params = urllib.urlencode(params)
+        if isinstance(params, str):
+            encoded_params = params
+        else:
+            encoded_params = urllib.urlencode(params)
         
         if headers is not None:
             req = urllib2.Request(path, encoded_params, headers)
@@ -111,7 +117,7 @@ class VdiskClient(object):
                       'token': self.token,
                       'dir_id': dir_id,
                       'cover': 'yes' if cover else 'no',
-                      'file': fp.read(),
+                      'file': fp,
                       'dologid': self.dologid
                       }
             
@@ -119,13 +125,21 @@ class VdiskClient(object):
                 params['callback'] = callback
             if dir:
                 params['dir'] = dir
+        
+            
+            params, boundary = encode_multipart(params)
+            
+            headers = {
+                       'Content-Type': 'multipart/form-data; boundary=%s' % boundary
+                       }
+            
+            return self._base_oper('m=file&a=upload_file', params, headers=headers)
         finally:
             fp.close()
-        
-        headers = {
-                   'Content-Type': 'multipart/form-data; boundary='
-                   }
-        
-        return self._base_oper('m=file&a=upload_file', params, headers=headers)
-
     
+if __name__ == "__main__":
+    client = VdiskClient('31070830', '54dcc04636122ed81c2ddd02a3ef4855')
+    client.auth("chinekingseu@gmail.com", "!jyp1122ily")
+    client.upload_file("C:\\Users\\Chine\\Desktop\\ip.txt", 0, True)
+
+    print 'succeed'
