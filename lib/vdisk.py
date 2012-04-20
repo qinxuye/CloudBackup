@@ -13,6 +13,7 @@ import os
 
 from errors import VdiskError
 from utils import hmac_sha256, encode_multipart
+from crypto import DES
 
 __author__ = "Chine King"
 __description__ = "A client for vdisk api, site: http://vdisk.me/api/doc"
@@ -148,7 +149,9 @@ class VdiskClient(object):
         return self._base_oper('m=user&a=keep_token', {'token': self.token, 
                                                        'dologid': self.dologid})
         
-    def upload_file(self, filename, dir_id, cover, maxsize=10, callback=None, dir=None):
+    def upload_file(self, filename, dir_id, cover, 
+                    maxsize=10, callback=None, dir_=None, 
+                    encrypt=False, encrypt_func=None):
         '''
         Upload file.
         :param filename: the absolute path of a file
@@ -156,7 +159,7 @@ class VdiskClient(object):
         :param cover: bool viriable, True if you want to cover the file which exists
         :param maxsize(optional): the max size, 10M as default
         :param callback(optional): the redirect url, msg will be transfered if set
-        :param dir(optional): the dir of file exsits, the param dir_id will be ignored if this is set.
+        :param dir_(optional): the dir of file exsits, the param dir_id will be ignored if this is set.
         
         :return 0: the return data.
         :return 1: the dologdir.
@@ -196,10 +199,12 @@ class VdiskClient(object):
             if callback:
                 params['callback'] = callback
             if dir:
-                params['dir'] = dir
+                params['dir'] = dir_
         
-            
-            params, boundary = encode_multipart(params)
+            if encrypt and encrypt_func is not None:
+                params, boundary = encode_multipart(params, True, encrypt_func)
+            else:
+                params, boundary = encode_multipart(params)
             
             headers = {
                        'Content-Type': 'multipart/form-data; boundary=%s' % boundary
@@ -475,3 +480,13 @@ class VdiskClient(object):
                                                                'path': path,
                                                                'dologid': self.dologid
                                                                })
+        
+class CryptoVdiskClient(VdiskClient):
+    def __init__(self, app_key, app_secret, IV):
+        super(CryptoVdiskClient, self).__init__(app_key, app_secret)
+        self.des = DES(IV)
+        
+    def upload_file(self, filename, dir_id, cover, maxsize=10, callback=None, dir_=None):
+        return super(CryptoVdiskClient, self).upload_file(filename, dir_id, cover, 
+                                                          maxsize, callback, dir_, 
+                                                          True, self.des.encrypt)

@@ -39,6 +39,4 @@ class VdiskError(CloudBackupLibError):
     '''
     
     def __init__(self, err_no, msg):
-        self.src = 'vdisk'
-        self.err_no = err_no
-        self.msg = msg
+        super(VdiskError, self).__init__('vdisk', err_no, msg)

@@ -18,7 +18,7 @@ from errors import CloudBackupLibError
 def hmac_sha256(secret, data):
     return hmac.new(secret, data, sha256).hexdigest()
 
-def encode_multipart(kwargs):
+def encode_multipart(kwargs, encrypt=False, encrypt_func=None):
     '''
     Build a multipart/form-data body with generated random boundary.
     '''
@@ -31,6 +31,9 @@ def encode_multipart(kwargs):
             # file-like object:
             filename = getattr(v, 'name', '')
             content = v.read()
+            if encrypt and encrypt_func is not None:
+                content = encrypt_func(content)
+            
             file_type = mimetypes.guess_type(filename)
             if file_type is None:
                 raise CloudBackupLibError('utils', -1, 'Could not determine file type')
