@@ -136,3 +136,87 @@ class VdiskClient(object):
             return self._base_oper('m=file&a=upload_file', params, headers=headers)
         finally:
             fp.close()
+            
+    def create_dir(self, create_name, parent_id):
+        return self._base_oper('m=dir&a=create_dir', {
+                                                      'token': self.token,
+                                                      'create_name': create_name,
+                                                      'parent_id': parent_id,
+                                                      'dologid': self.dologid
+                                                      })
+        
+    def delete_dir(self, dir_id):
+        return self._base_oper('m=dir&a=delete_dir', {
+                                                      'token': self.token,
+                                                      'dir_id': dir_id,
+                                                      'dologid': self.dologid
+                                                      })
+        
+    def rename_dir(self, dir_id, new_name):
+        return self._base_oper('m=dir&a=rename_dir', {
+                                                      'token': self.token,
+                                                      'dir_id': dir_id,
+                                                      'new_name': new_name,
+                                                      'dologid': self.dologid
+                                                      })
+        
+    def move_dir(self, dir_id, new_name, to_parent_id):
+        return self._base_oper('m=dir&a=move_dir', {
+                                                    'token': self.token,
+                                                    'dir_id': dir_id,
+                                                    'new_name': new_name,
+                                                    'to_parent_id': to_parent_id,
+                                                    'dologid': self.dologid
+                                                    })
+        
+    def getlist(self, dir_id, page=1, pageSize=1024):
+        params = {'token': self.token,
+                  'dir_id': dir_id,
+                  'dologid': self.dologid}
+        if page > 1: 
+            params['page'] = page
+        if 2 <= pageSize < 1024:
+            params['pageSize'] = pageSize
+            
+        return self._base_oper('m=dir&a=getlist', params)
+    
+    def get_quota(self):
+        return self._base_oper('m=file&a=get_quota', {'token': self.token,
+                                                      'dologid': self.dologid})
+        
+    def get_file_info(self, fid):
+        return self._base_oper('m=file&a=get_file_info', {'token': self.token,
+                                                          'fid': fid,
+                                                          'dologid': self.dologid})
+        
+    def delete_file(self, fid):
+        return self._base_oper('m=file&a=delete_file', {'token': self.token,
+                                                        'fid': fid,
+                                                        'dologid': self.dologid})    
+        
+    def copy_file(self, fid, new_name, to_dir_id):
+        return self._base_oper('m=file&a=copy_file', {'token': self.token,
+                                                      'fid': fid,
+                                                      'new_name': new_name,
+                                                      'to_dir_id': to_dir_id,
+                                                      'dologid': self.dologid}) 
+        
+    def move_file(self, fid, new_name, to_dir_id):
+        return self._base_oper('m=file&a=move_file', {'token': self.token,
+                                                      'fid': fid,
+                                                      'new_name': new_name,
+                                                      'to_dir_id': to_dir_id,
+                                                      'dologid': self.dologid}) 
+        
+    def rename_file(self, fid, new_name):
+        return self._base_oper('m=file&a=rename_file', {'token': self.token,
+                                                        'fid': fid,
+                                                        'new_name': new_name,
+                                                        'dologid': self.dologid})
+        
+    def get_dirid_with_path(self, path):
+        return self._base_oper('m=dir&a=get_dirid_with_path', {
+                                                               'token': self.token,
+                                                               'path': path,
+                                                               'dologid': self.dologid
+                                                               })
