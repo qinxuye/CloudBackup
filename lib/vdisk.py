@@ -226,11 +226,14 @@ class VdiskClient(object):
         dest = os.path.join(dir_, filename)
         fp = open(dest, 'wb')
         
-        resp = urllib2.urlopen(url)
-        if decrypt and decrypt_func is not None:
-            fp.write(decrypt_func(resp.read()))
-        else:
-            fp.write(resp.read())
+        try:
+            resp = urllib2.urlopen(url)
+            if decrypt and decrypt_func is not None:
+                fp.write(decrypt_func(resp.read()))
+            else:
+                fp.write(resp.read())
+        finally:
+            fp.close()
             
     def create_dir(self, create_name, parent_id):
         '''
