@@ -214,6 +214,24 @@ class VdiskClient(object):
         finally:
             fp.close()
             
+    def download_file(self, fid, dir_, decrypt=False, decrypt_func=None):
+        '''
+        Download file by file id.
+        :param fid: file id
+        :param dir_: the directory where file downloads to
+        '''
+        data = self.get_file_info(fid)[0]
+        url, filename = data['s3_url'], data['name']
+        
+        dest = os.path.join(dir_, filename)
+        fp = open(dest, 'wb')
+        
+        resp = urllib2.urlopen(url)
+        if decrypt and decrypt_func is not None:
+            fp.write(decrypt_func(resp.read()))
+        else:
+            fp.write(resp.read())
+            
     def create_dir(self, create_name, parent_id):
         '''
         :param create_name: dir name
@@ -490,3 +508,6 @@ class CryptoVdiskClient(VdiskClient):
         return super(CryptoVdiskClient, self).upload_file(filename, dir_id, cover, 
                                                           maxsize, callback, dir_, 
                                                           True, self.des.encrypt)
+        
+    def download_file(self, fid, dir_):
+        super(CryptoVdiskClient, self).download_file(fid, dir_, True, self.des.decrypt)
