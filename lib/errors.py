@@ -12,12 +12,15 @@ __description__ = "Errors for CloudBackup libraries"
 class CloudBackupLibError(Exception):
     '''
     A base error for CloudBackup library
-    :param src: the source of error, vdisk etc
-    :param error_no: the number of the error source
-    :param msg: the error message
     '''
     
     def __init__(self, src, err_no, msg):
+        '''
+        :param src: the source of error, vdisk etc
+        :param error_no: the number of the error source
+        :param msg: the error message
+        '''
+        
         self.src = src
         self.err_no = int(err_no)
         self.msg = msg
