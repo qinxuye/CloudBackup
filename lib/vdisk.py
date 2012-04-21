@@ -198,7 +198,7 @@ class VdiskClient(object):
             
             if callback:
                 params['callback'] = callback
-            if dir:
+            if dir_:
                 params['dir'] = dir_
         
             if encrypt and encrypt_func is not None:
@@ -503,8 +503,17 @@ class VdiskClient(object):
                                                                })
         
 class CryptoVdiskClient(VdiskClient):
-    def __init__(self, app_key, app_secret, IV):
-        super(CryptoVdiskClient, self).__init__(app_key, app_secret)
+    '''
+    Almost like VdiskClient, but supports uploading and downloading files with crypto.
+    
+    Usage:
+    client = CryptoVdiskClient('your_app_key', 'your_app_secret') # init
+    client.auth('your_account', 'your_password', '12345678') # auth, the third param's length must be 8
+    client.upload_file('/from_path/file_name', 0, True) # call the vdisk api
+    ''' 
+        
+    def auth(self, account, password, IV, app_type="local"):
+        super(CryptoVdiskClient, self).auth(account, password, app_type)
         self.des = DES(IV)
         
     def upload_file(self, filename, dir_id, cover, maxsize=10, callback=None, dir_=None):
