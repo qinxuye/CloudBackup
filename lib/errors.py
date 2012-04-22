@@ -26,7 +26,7 @@ class CloudBackupLibError(Exception):
         self.msg = msg
         
     def __str__(self):
-        if self.err_no == -1:
+        if self.err_no < 0:
             return "Error from %s: %s" \
                     % (self.src, self.msg)
             
@@ -40,3 +40,11 @@ class VdiskError(CloudBackupLibError):
     
     def __init__(self, err_no, msg):
         super(VdiskError, self).__init__('vdisk', err_no, msg)
+        
+class S3Error(CloudBackupLibError):
+    '''
+    Amazon S3 error
+    '''
+    
+    def __init__(self, msg):
+        super(S3Error, self).__init__('s3', -1, msg)

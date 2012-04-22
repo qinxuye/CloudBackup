@@ -27,7 +27,7 @@ def _call(url_params, params, headers=None, method="POST", try_times=3, try_inte
                 full_params = "&".join((url_params, params))
             else:
                 full_params = "&".join((url_params, urllib.urlencode(params)))
-            path = "%s?%s" %(endpoint, full_params)
+            path = "%s?%s" % (endpoint, full_params)
             resp = urllib2.urlopen(path)
             return json.loads(resp.read())
         
@@ -182,7 +182,7 @@ class VdiskClient(object):
         
         try:
             if os.path.getsize(filename) > maxsize * (1024 ** 2):
-                raise VdiskError(-1, 'The file is larger than %dM' % maxsize)
+                raise VdiskError(-2, 'The file is larger than %dM' % maxsize)
         except os.error:
             raise VdiskError(-1, 'Can\'t access the file')
         
