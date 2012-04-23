@@ -89,8 +89,3 @@ class S3Client(object):
         
         print self._base_oper('http://s3.amazonaws.com', headers)
         
-if __name__ == '__main__':
-    client = S3Client('AKIAILIXLRD4XN3RMPKA', 'g2FoEFDoQMz8n5dNP8k1FRzqkC8VoN4DURg4hYBU')
-    client.put_bucket('chine-test-bucket-1')
-            
-        
