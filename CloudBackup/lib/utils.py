@@ -12,6 +12,10 @@ import hmac
 from hashlib import sha256
 import time
 import mimetypes
+try:
+    from xml.etree.ElementTree import XMLTreeBuilder
+except ImportError:
+    from elementtree.ElementTree import XMLTreeBuilder
 
 from errors import CloudBackupLibError
 
@@ -48,3 +52,16 @@ def encode_multipart(kwargs, encrypt=False, encrypt_func=None):
             data.append(v.encode('utf-8') if isinstance(v, unicode) else str(v))
     data.append('--%s--\r\n' % boundary)
     return '\r\n'.join(data), boundary
+
+class NamespaceFixXmlTreeBuilder(XMLTreeBuilder):
+    def _fixname(self, key):
+        if '}' in key:
+            key = key.split('}', 1)[1]
+        return key
+    
+class XML(object):
+    @classmethod
+    def loads(cls, data):
+        parser = NamespaceFixXmlTreeBuilder()
+        parser.feed(data)
+        return parser.close()

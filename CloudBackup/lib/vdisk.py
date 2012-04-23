@@ -7,9 +7,12 @@ Created on 2012-4-18
 '''
 
 import urllib, urllib2
-import json
 import time
 import os
+try:
+    import json # json is simplejson in 2.6+
+except ImportError:
+    import simplejson as json
 
 from errors import VdiskError
 from utils import hmac_sha256, encode_multipart
@@ -49,7 +52,7 @@ def _call(url_params, params, headers=None, method="POST", try_times=3, try_inte
     for i in range(try_times):
         try:
             return _get_data()
-        except urllib2.HTTPError:
+        except urllib2.URLError:
             time.sleep(try_interval)
             
         raise VdiskError(-1, "Can't not connect to server")
