@@ -46,3 +46,5 @@ class S3Client(object):
     
     def _get_date_str(self):
         return datetime.datetime.utcnow().strftime(GMT_FORMAT)
+    
+    
