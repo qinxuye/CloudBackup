@@ -46,12 +46,15 @@ class S3Error(CloudBackupLibError):
     Amazon S3 error
     '''
     
-    def __init__(self, tree, status):
+    def __init__(self, tree, status, msg=None):
         self.src = 's3'
         self.err_no = status
         self.tree = tree
         
-        self._parse()
+        if tree:
+            self._parse()
+        elif msg:
+            self.msg = msg
         
     def _parse(self, tree=None):
         if not tree:

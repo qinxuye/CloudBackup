@@ -55,7 +55,7 @@ def _call(url_params, params, headers=None, method="POST", try_times=3, try_inte
         except urllib2.URLError:
             time.sleep(try_interval)
             
-        raise VdiskError(-1, "Can't not connect to server")
+        raise VdiskError(-1, "Can't connect to server")
 
 def get_signature(data, app_secret):
     data_str = '&'.join(['%s=%s' % (k, data[k]) for k in sorted(data)])
