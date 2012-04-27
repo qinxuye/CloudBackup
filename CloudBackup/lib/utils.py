@@ -9,7 +9,8 @@ Created on 2012-4-18
 __author__ = "Chine King"
 
 import hmac
-from hashlib import sha256
+from hashlib import sha256, sha1, md5
+from base64 import b64encode
 import time
 import mimetypes
 try:
@@ -19,8 +20,14 @@ except ImportError:
 
 from errors import CloudBackupLibError
 
-def hmac_sha256(secret, data):
+def hmac_sha256_hex(secret, data):
     return hmac.new(secret, data, sha256).hexdigest()
+
+def hmac_sha1(secret, data):
+    return b64encode(hmac.new(secret, data, sha1).digest())
+
+def calc_md5(data):
+    return b64encode(md5(data).digest())
 
 def encode_multipart(kwargs, encrypt=False, encrypt_func=None):
     '''

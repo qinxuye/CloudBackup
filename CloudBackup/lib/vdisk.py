@@ -15,7 +15,7 @@ except ImportError:
     import simplejson as json
 
 from errors import VdiskError
-from utils import hmac_sha256, encode_multipart
+from utils import hmac_sha256_hex as hmac_sha256, encode_multipart
 from crypto import DES
 
 __author__ = "Chine King"
