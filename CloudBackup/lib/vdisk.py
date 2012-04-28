@@ -61,6 +61,16 @@ def get_signature(data, app_secret):
     data_str = '&'.join(['%s=%s' % (k, data[k]) for k in sorted(data)])
     return hmac_sha256(app_secret, data_str)
 
+class VdiskObject(dict):
+    def __getattr__(self, attr):
+        if attr in self:
+            obj = self[attr]
+            if isinstance(obj, list):
+                return [VdiskObject(itm) for itm in list]
+            elif isinstance(obj, dict):
+                return VdiskObject(obj)
+            return obj
+
 class VdiskClient(object):
     '''
     Vdisk client.
@@ -102,7 +112,9 @@ class VdiskClient(object):
         
         self.dologid = result['dologid']
         
-        return result.get('data'), result['dologdir']
+        ret_result = result.get('data', {})
+        ret_result['dologdir'] = result['dologdir']
+        return VdiskObject(ret_result)
     
     def get_token(self, account, password, app_type="local"):
         '''
@@ -164,10 +176,8 @@ class VdiskClient(object):
         :param callback(optional): the redirect url, msg will be transfered if set
         :param dir_(optional): the dir of file exsits, the param dir_id will be ignored if this is set.
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        
-        The example of return 0:
+        :return:
+        The example
         {
             "fid":"168593",
             "name":"MIME.txt",
@@ -243,8 +253,7 @@ class VdiskClient(object):
         :param create_name: dir name
         :param parent_id: the parent dir id, 0 as the root dir
         
-        :return 0: the return data.
-        :return 1: the dologdir.
+        :return: the return data.
         
         The example of return 0:
         {
@@ -267,9 +276,6 @@ class VdiskClient(object):
     def delete_dir(self, dir_id):
         '''
         :param dir_id: the dir id
-        
-        :return 0: the return data.
-        :return 1: the dologdir.
         '''
         
         return self._base_oper('m=dir&a=delete_dir', {
@@ -282,9 +288,6 @@ class VdiskClient(object):
         '''
         :param dir_id: dir id
         :param new_name: new name of the dir
-        
-        :return 0: the return data.
-        :return 1: the dologdir.
         '''
         
         return self._base_oper('m=dir&a=rename_dir', {
@@ -300,9 +303,8 @@ class VdiskClient(object):
         :param new_name: new name of the dir
         :param to_parent_id: the parent dir id.
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        The example of return 0:
+        :return: the return data.
+        The example:
         {
             "name":"\u79fb\u52a8\u540e\u7684\u76ee\u5f55",
             "dir_id":3929,
@@ -325,9 +327,8 @@ class VdiskClient(object):
         :param page(optional): the page, 1 as default
         :param pageSize(optional): the pageSize, 1024 as default and also if pageSize>=2 or pageSize<1024
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        The example of return 0:
+        :return: the return data.
+        The example:
         {
             "list":[
                 {
@@ -371,9 +372,8 @@ class VdiskClient(object):
         '''
         Get the status of your vdisk usage.
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        The example of return 0:
+        :return: the return data.
+        The example:
         {
             "used":"1330290823",
             "total":"4294967296"
@@ -387,9 +387,8 @@ class VdiskClient(object):
         '''
         :param fid: file id
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        The example of return 0:
+        :return: the return data.
+        The example:
         {
             "id":"219379", // 文件id
             "name":"VS2008TeamSuite90DayTrialCHSX1429243.part4.rar", 文件名
@@ -411,9 +410,6 @@ class VdiskClient(object):
     def delete_file(self, fid):
         '''
         :param fid: file id
-        
-        :return 0: the return data.
-        :return 1: the dologdir.
         '''
         
         return self._base_oper('m=file&a=delete_file', {'token': self.token,
@@ -426,9 +422,8 @@ class VdiskClient(object):
         :param new_name: new name of the file
         :param to_dir_id: the id of dir which file copied to
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        The example of return 0:
+        :return: the return data.
+        The example:
         {
             "uid":"62",
             "ctime":1289287059,
@@ -455,9 +450,8 @@ class VdiskClient(object):
         :param new_name: new name of the file
         :param to_dir_id: the id of dir which file moved to
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        The example of return 0:
+        :return: the return data.
+        The example:
         {
             "name":"\u79fb\u52a8\u540e.rar",
             "dir_id":3929,
@@ -476,9 +470,6 @@ class VdiskClient(object):
         '''
         :param fid: file id
         :param new_name: new name of the file
-        
-        :return 0: the return data.
-        :return 1: the dologdir.
         '''
         
         return self._base_oper('m=file&a=rename_file', {'token': self.token,
@@ -486,24 +477,49 @@ class VdiskClient(object):
                                                         'new_name': new_name,
                                                         'dologid': self.dologid})
         
+    def share_file(self, fid, ip=None):
+        '''
+        :param fid: file id
+        :param new_name: new name of the file
+        
+        :return: the return data.
+        The example:
+        {
+            "download_page":"http:\/\/vdisk.me\/?m=share&a=dow……"
+        }
+        '''
+        
+        params = {'token': self.token,
+                  'fid': fid,
+                  'dologid': self.dologid
+                  }
+        if ip is not None:
+            params['ip'] = ip
+        
+        return self._base_oper('m=file&a=share_file', params)
+    
+    def cancel_share_file(self, fid):
+        '''
+        :param fid: file id
+        '''
+        
+        return self._base_oper('m=file&a=cancel_share_file', {'token': self.token,
+                                                        'fid': fid,
+                                                        'dologid': self.dologid})
+        
     def get_dirid_with_path(self, path):
         '''
         Get the dir id by the path of it.
         :param path: path of the dir
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        The example of return 0:
-        {
-            "id":12345
-        }
+        :return: the dir id of path.
         '''
         
         return self._base_oper('m=dir&a=get_dirid_with_path', {
                                                                'token': self.token,
                                                                'path': path,
                                                                'dologid': self.dologid
-                                                               })
+                                                               })['id']
         
 class CryptoVdiskClient(VdiskClient):
     '''
