@@ -504,8 +504,8 @@ class VdiskClient(object):
         '''
         
         return self._base_oper('m=file&a=cancel_share_file', {'token': self.token,
-                                                        'fid': fid,
-                                                        'dologid': self.dologid})
+                                                              'fid': fid,
+                                                              'dologid': self.dologid})
         
     def get_dirid_with_path(self, path):
         '''

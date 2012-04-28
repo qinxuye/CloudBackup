@@ -40,7 +40,7 @@ class S3Request(object):
                  action, bucket_name=None, obj_name=None,
                  data=None, content_type=None, metadata={}, amz_headers={} ):
         
-        assert action in ACTION_TYPES # action must be put, get and delete
+        assert action in ACTION_TYPES # action must be PUT, GET and DELETE.
         
         self.access_key = access_key
         self.secret_key = secret_access_key
@@ -160,10 +160,23 @@ class S3Client(object):
                         bucket_name=bucket_name, metadata=metadata)
         
         return req.submit()
+    
+    def get_bucket(self, bucket_name):
+        req = S3Request(self.access_key, self.secret_key, 'GET',
+                        bucket_name=bucket_name)
+        return req.submit()
+    
+    def delete_bucket(self, bucket_name):
+        req = S3Request(self.access_key, self.secret_key, 'DELETE',
+                        bucket_name=bucket_name)
+        return req.submit()
+        
         
 if __name__ == "__main__":
     from CloudBackup.test.settings import *
     
     client = S3Client(S3_ACCESS_KEY, S3_SECRET_ACCESS_KEY)
-    print client.put_bucket('chine-s3-test-2')
+    #print client.put_bucket('chine-s3-test-2')
     #print client.list_buckets()
+    #print client.get_bucket('chine-s3-test-1')
+    client.delete_bucket('chine-s3-test-2')
