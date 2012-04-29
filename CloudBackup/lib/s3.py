@@ -16,6 +16,7 @@ from utils import XML, hmac_sha1, calc_md5
 
 __author__ = "Chine King"
 __description__ = "A client for Amazon S3 api, site: http://aws.amazon.com/documentation/s3/"
+__all__ = ['X_AMZ_ACL', 'S3Bucket', 'S3Object', 'AmazonUser', 'S3Client']
 
 ACTION_TYPES = ('PUT', 'GET', 'DELETE')
 GMT_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
@@ -41,6 +42,87 @@ class XAmzAcl(object):
                     'bucket-owner-full-control'):
             setattr(self, val.replace('-', '_'), val)
 X_AMZ_ACL = XAmzAcl()
+
+class S3Base(object):
+    def __init__(self, **kwargs):
+        if len(kwargs) > 0 and hasattr(self, 'mapping'):
+            reversed_mapping = {}
+            for k, v in self.mapping.iteritems():
+                reversed_mapping[v.lower()] = k
+            
+            for k, v in kwargs.iteritems():
+                if k in reversed_mapping:
+                    setattr(self, reversed_mapping[k], v)                    
+
+class S3Bucket(S3Base):
+    mapping = {'name': 'Name',
+               'create_date': 'CreationDate',
+               'prefix': 'Prefix',
+               'marker': 'Marker',
+               'max_keys': 'MaxKeys',
+               'is_truncated': 'IsTruncated'}
+    
+    @classmethod    
+    def from_xml(cls, tree):
+        bucket = S3Bucket()
+        
+        for k, v in cls.mapping.iteritems():
+            tag = tree.find(v)
+            if hasattr(tag, 'text'):
+                setattr(bucket, k, tag.text)
+                
+        return bucket
+        
+
+class S3Object(S3Base):
+    mapping = {'key': 'Key',
+               'last_modified': 'LastModified',
+               'etag': 'ETag',
+               'size': 'Size',
+               'storage_class': 'StorageClass',
+               'is_truncated': 'IsTruncated',
+               'date': 'Date',
+               'content_length': 'Content-Length',
+               'content_type': 'Content-Type'}
+    
+    def __init__(self, **kwargs):
+        if 'data' in kwargs:
+            self.data = kwargs.pop('data')
+        super(S3Object, self).__init__(**kwargs)
+    
+    @classmethod    
+    def from_xml(cls, tree):
+        obj = S3Object()
+        
+        for k, v in cls.mapping.iteritems():
+            tag = tree.find(v)
+            if hasattr(tag, 'text'):
+                setattr(obj, k, tag.text)
+                
+        owner = tree.find('Owner')
+        if owner is not None:
+            obj.owner = AmazonUser.from_xml(owner)
+                
+        return obj
+
+class AmazonUser(object):
+    mapping = {'id_': 'ID',
+               'display_name': 'DisplayName'}
+    
+    def __init__(self, id_=None, display_name=None):
+        self.id_ = id_
+        self.display_name = display_name
+        
+    @classmethod
+    def from_xml(cls, tree):
+        user = AmazonUser()
+        
+        for k, v in cls.mapping.iteritems():
+            tag = tree.find(v)
+            if hasattr(tag, 'text'):
+                setattr(user, k, tag.text)
+                
+        return user
 
 class S3Request(object):
     def __init__(self, access_key, secret_access_key, 
@@ -129,7 +211,7 @@ class S3Request(object):
         headers['Authorization'] = self._get_authorization(headers)
         return headers
     
-    def submit(self, try_times=3, try_interval=3):
+    def submit(self, try_times=3, try_interval=3, callback=None, include_headers=False):
         def _get_data():
             headers = self.get_headers()
             try:
@@ -137,6 +219,9 @@ class S3Request(object):
                 req = urllib2.Request(self.end_point, data=self.data, headers=headers)
                 req.get_method = lambda: self.action
                 resp = opener.open(req)
+                
+                if include_headers:
+                    return resp.read(), resp.headers.dict
                 return resp.read()
             except urllib2.HTTPError, e:
                 #c = e.read()
@@ -147,6 +232,11 @@ class S3Request(object):
             
         for i in range(try_times):
             try:
+                if include_headers and callback:
+                    data, headers = _get_data()
+                    return callback(data, headers)
+                if callback:
+                    return callback(_get_data())
                 return _get_data()
             except urllib2.URLError:
                 time.sleep(try_interval)
@@ -160,9 +250,19 @@ class S3Client(object):
         self.access_key = access_key
         self.secret_key = secret_access_key
         
+    def _parse_list_buckets(self, data):
+        tree = XML.loads(data)
+        owner = AmazonUser.from_xml(tree.find('Owner'))
+        
+        buckets = []
+        for ele in tree.find('Buckets').getchildren():
+            buckets.append(S3Bucket.from_xml(ele))
+            
+        return owner, buckets
+        
     def list_buckets(self):
         req = S3Request(self.access_key, self.secret_key, 'GET')
-        return req.submit()
+        return req.submit(callback=self._parse_list_buckets)
     
     def put_bucket(self, bucket_name, x_amz_acl=X_AMZ_ACL.private):
         amz_headers = {}
@@ -174,10 +274,22 @@ class S3Client(object):
         
         return req.submit()
     
+    def _parse_get_bucket(self, data):
+        tree = XML.loads(data)
+        bucket = S3Bucket.from_xml(tree)
+        
+        objs = []
+        for ele in tree.findall('Contents'):
+            obj = S3Object.from_xml(ele)
+            obj.bucket = bucket
+            objs.append(obj)
+            
+        return objs
+    
     def get_bucket(self, bucket_name):
         req = S3Request(self.access_key, self.secret_key, 'GET',
                         bucket_name=bucket_name)
-        return req.submit()
+        return req.submit(callback=self._parse_get_bucket)
     
     def delete_bucket(self, bucket_name):
         req = S3Request(self.access_key, self.secret_key, 'DELETE',
@@ -194,28 +306,39 @@ class S3Client(object):
     def get_object(self, bucket_name, obj_name):
         req = S3Request(self.access_key, self.secret_key, 'GET',
                         bucket_name=bucket_name, obj_name=obj_name)
-        return req.submit()
+        return req.submit(include_headers=True, callback=lambda data, headers: S3Object(data=data, **headers))
     
     def delete_object(self, bucket_name, obj_name):
         req = S3Request(self.access_key, self.secret_key, 'DELETE',
                         bucket_name=bucket_name, obj_name=obj_name)
         return req.submit()
     
-    def upload_file(self, filename, bucket_name, obj_name, x_amz_acl=X_AMZ_ACL.private):
+    def upload_file(self, filename, bucket_name, obj_name, x_amz_acl=X_AMZ_ACL.private,
+                    encrypt=False, encrypt_func=None):
         fp = open(filename, 'rb')
         try:
             amz_headers = {}
             if x_amz_acl != X_AMZ_ACL.private:
                 amz_headers['acl'] = x_amz_acl
                 
-            self.put_object(bucket_name, obj_name, fp.read(), amz_headers=amz_headers)
+            data = fp.read()
+            if encrypt and encrypt_func is not None:
+                data = encrypt_func(data)
+                
+            self.put_object(bucket_name, obj_name, data, amz_headers=amz_headers)
         finally:
             fp.close()
             
-    def download_file(self, filename, bucket_name, obj_name):
+    def download_file(self, filename, bucket_name, obj_name, 
+                      decrypt=False, decrypt_func=None):
         fp = open(filename, 'wb')
         try:
-            fp.write(self.get_object(bucket_name, obj_name))
+            data = self.get_object(bucket_name, obj_name).data
+            
+            if decrypt and decrypt_func is not None:
+                data = decrypt_func(data)
+            
+            fp.write(data)
         finally:
             fp.close()
         
@@ -224,11 +347,3 @@ if __name__ == "__main__":
     from CloudBackup.test.settings import *
     
     client = S3Client(S3_ACCESS_KEY, S3_SECRET_ACCESS_KEY)
-    #print client.put_bucket('chine-s3-test-2')
-    #print client.list_buckets()
-    #print client.get_bucket('chine-s3-test-1')
-    #client.delete_bucket('chine-s3-test-2')
-    #client.upload_file('C:\\Users\\Chine\\Desktop\\ip.txt', 'chine-s3-test-1', 'ip.txt')
-    #client.delete_object('chine-s3-test-1', 'ip.txt')
-    #print client.get_object('chine-s3-test-1', 'ip.txt')
-    client.download_file('C:\\Users\\Chine\\Desktop\\ip2.txt', 'chine-s3-test-1', 'ip.txt')

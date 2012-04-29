@@ -20,6 +20,7 @@ from crypto import DES
 
 __author__ = "Chine King"
 __description__ = "A client for vdisk api, site: http://vdisk.me/api/doc"
+__all__ = ['VdiskClient', 'CryptoVdiskClient']
 
 endpoint = "http://openapi.vdisk.me/"
 
