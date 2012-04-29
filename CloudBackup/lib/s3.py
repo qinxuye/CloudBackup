@@ -438,7 +438,7 @@ class S3Client(object):
     def upload_file(self, filename, bucket_name, obj_name, x_amz_acl=X_AMZ_ACL.private,
                     encrypt=False, encrypt_func=None):
         '''
-        Upload an local file to the Amazon S3.
+        Upload a local file to the Amazon S3.
         
         :param filename: the absolute path of the local file.
         :param bucket_name: name of the bucket which file puts into.
@@ -500,7 +500,7 @@ class CryptoS3Client(S3Client):
     
     Usage:
     # init, the third param's length must be 8
-    client = S3Client('your_access_key', 'your_secret_access_key', 12345678') 
+    client = CryptoS3Client('your_access_key', 'your_secret_access_key', 12345678') 
     
     # call the Amazon S3 api
     client.upload_file('/local_path/file_name', 'my_bucket_name', 'my_folder/file_name') 
