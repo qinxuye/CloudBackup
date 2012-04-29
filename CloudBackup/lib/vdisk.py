@@ -152,9 +152,7 @@ class VdiskClient(object):
         You have to do this operation every 10 to 15 minutes,
         or the token will expire.
         
-        :return 0: the return data.
-        :return 1: the dologdir.
-        
+        :return: the return data.
         The example of return 0:
         {
             "uid":1000001
@@ -254,7 +252,6 @@ class VdiskClient(object):
         :param parent_id: the parent dir id, 0 as the root dir
         
         :return: the return data.
-        
         The example of return 0:
         {
             "dir_id":"35503",

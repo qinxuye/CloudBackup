@@ -26,6 +26,13 @@ STRING_TO_SIGN = '''%(action)s
 %(c_amz_headers)s%(c_resource)s'''
 
 end_point = "http://s3.amazonaws.com"
+def get_end_point(bucket_name=None, obj_name=None, http=False):
+    prefix = 'http://' if http else ''
+    url = '%s%ss3.amazonaws.com' % (prefix, 
+                                    bucket_name+'.' if bucket_name else '')
+    if not obj_name:
+        return url
+    return url + obj_name if obj_name.startswith('/') else url + '/' + obj_name
 
 class XAmzAcl(object):
     def __init__(self):
@@ -57,6 +64,9 @@ class S3Request(object):
         self.amz_headers = amz_headers
         
         self.date_str = self._get_date_str()
+        
+        self.host = get_end_point(self.bucket_name)
+        self.end_point = get_end_point(self.bucket_name, self.obj_name, True)
             
     def _get_date_str(self):
         return datetime.datetime.utcnow().strftime(GMT_FORMAT)
@@ -109,7 +119,7 @@ class S3Request(object):
             headers['Content-Type'] = self.content_type
             
         if self.bucket_name:
-            headers['Host'] = '%s.s3.amazonaws.com' % self.bucket_name
+            headers['Host'] = self.host
         
         for k, v in self.metadata.iteritems():
             headers['x-amz-meta-' + k] = v
@@ -124,11 +134,14 @@ class S3Request(object):
             headers = self.get_headers()
             try:
                 opener = urllib2.build_opener(urllib2.HTTPHandler)
-                req = urllib2.Request(end_point, data=self.data, headers=headers)
+                req = urllib2.Request(self.end_point, data=self.data, headers=headers)
                 req.get_method = lambda: self.action
                 resp = opener.open(req)
                 return resp.read()
             except urllib2.HTTPError, e:
+                #c = e.read()
+                #print c
+                #tree = XML.loads(c)
                 tree = XML.loads(e.read())
                 raise S3Error(tree, e.code)
             
@@ -152,12 +165,12 @@ class S3Client(object):
         return req.submit()
     
     def put_bucket(self, bucket_name, x_amz_acl=X_AMZ_ACL.private):
-        metadata = {}
+        amz_headers = {}
         if x_amz_acl != X_AMZ_ACL.private:
-            metadata['acl'] = x_amz_acl
+            amz_headers['acl'] = x_amz_acl
         
         req = S3Request(self.access_key, self.secret_key, 'PUT', 
-                        bucket_name=bucket_name, metadata=metadata)
+                        bucket_name=bucket_name, amz_headers=amz_headers)
         
         return req.submit()
     
@@ -170,6 +183,41 @@ class S3Client(object):
         req = S3Request(self.access_key, self.secret_key, 'DELETE',
                         bucket_name=bucket_name)
         return req.submit()
+    
+    def put_object(self, bucket_name, obj_name, data, content_type=None, 
+                   metadata={}, amz_headers={}):
+        req = S3Request(self.access_key, self.secret_key, 'PUT',
+                        bucket_name=bucket_name, obj_name=obj_name, data=data,
+                        content_type=content_type, metadata=metadata, amz_headers=amz_headers)
+        return req.submit()
+    
+    def get_object(self, bucket_name, obj_name):
+        req = S3Request(self.access_key, self.secret_key, 'GET',
+                        bucket_name=bucket_name, obj_name=obj_name)
+        return req.submit()
+    
+    def delete_object(self, bucket_name, obj_name):
+        req = S3Request(self.access_key, self.secret_key, 'DELETE',
+                        bucket_name=bucket_name, obj_name=obj_name)
+        return req.submit()
+    
+    def upload_file(self, filename, bucket_name, obj_name, x_amz_acl=X_AMZ_ACL.private):
+        fp = open(filename, 'rb')
+        try:
+            amz_headers = {}
+            if x_amz_acl != X_AMZ_ACL.private:
+                amz_headers['acl'] = x_amz_acl
+                
+            self.put_object(bucket_name, obj_name, fp.read(), amz_headers=amz_headers)
+        finally:
+            fp.close()
+            
+    def download_file(self, filename, bucket_name, obj_name):
+        fp = open(filename, 'wb')
+        try:
+            fp.write(self.get_object(bucket_name, obj_name))
+        finally:
+            fp.close()
         
         
 if __name__ == "__main__":
@@ -179,4 +227,8 @@ if __name__ == "__main__":
     #print client.put_bucket('chine-s3-test-2')
     #print client.list_buckets()
     #print client.get_bucket('chine-s3-test-1')
-    client.delete_bucket('chine-s3-test-2')
+    #client.delete_bucket('chine-s3-test-2')
+    #client.upload_file('C:\\Users\\Chine\\Desktop\\ip.txt', 'chine-s3-test-1', 'ip.txt')
+    #client.delete_object('chine-s3-test-1', 'ip.txt')
+    #print client.get_object('chine-s3-test-1', 'ip.txt')
+    client.download_file('C:\\Users\\Chine\\Desktop\\ip2.txt', 'chine-s3-test-1', 'ip.txt')
