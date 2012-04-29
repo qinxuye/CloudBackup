@@ -533,10 +533,10 @@ class CryptoVdiskClient(VdiskClient):
         super(CryptoVdiskClient, self).auth(account, password, app_type)
         self.des = DES(IV)
         
-    def upload_file(self, filename, dir_id, cover, maxsize=10, callback=None, dir_=None):
+    def upload_file(self, filename, dir_id, cover, maxsize=10, callback=None, dir_=None, encrypt=True):
         return super(CryptoVdiskClient, self).upload_file(filename, dir_id, cover, 
                                                           maxsize, callback, dir_, 
-                                                          True, self.des.encrypt)
+                                                          encrypt, self.des.encrypt)
         
-    def download_file(self, fid, dir_):
-        super(CryptoVdiskClient, self).download_file(fid, dir_, True, self.des.decrypt)
+    def download_file(self, fid, dir_, decrypt=True):
+        super(CryptoVdiskClient, self).download_file(fid, dir_, decrypt, self.des.decrypt)
