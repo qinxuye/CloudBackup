@@ -253,7 +253,7 @@ class VdiskClient(object):
         :param parent_id: the parent dir id, 0 as the root dir
         
         :return: the return data.
-        The example of return 0:
+        The example:
         {
             "dir_id":"35503",
             "name":"\u6d4b\u8bd5",

@@ -298,7 +298,7 @@ class S3Client(object):
         '''
         Create a bucket.
         
-        :param bucket_name: the name of tje bucket.
+        :param bucket_name: the name of the bucket.
         :param x_amz_acl: the acl of the bucket.
         :param region: the region of the buckt puts to.
         
@@ -329,7 +329,7 @@ class S3Client(object):
         As the const X_AMZ_ACL, REGION's properties contain the regions list above. REGION.EU eg.
         Notice again, '-' must be replaced with '_', such as REGION.ap_southeast_1.
         
-        As the tokyo is nearest to us, REGION.ap_northeast_1 is strongly recommended.
+        As tokyo's data center is nearest to us, REGION.ap_northeast_1 is strongly recommended.
         '''
         
         amz_headers = {}
