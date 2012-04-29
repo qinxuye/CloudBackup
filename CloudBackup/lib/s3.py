@@ -364,7 +364,7 @@ class S3Client(object):
         
         :param bucket_name
         
-        :return: list of buckets, each one is an instance of S3Bucket.
+        :return: list of objects in the bucket, each one is an instance of S3Object.
         '''
         
         req = S3Request(self.access_key, self.secret_key, 'GET',
