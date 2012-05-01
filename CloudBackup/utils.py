@@ -9,4 +9,4 @@ Created on 2012-5-1
 __author__ = "Chine King"
 
 def join_path(*path):
-    return reduce(lambda p1, p2: '/'.join((p1.rstrip('/'), p2.lstrip('/'))), path)
+    return reduce(lambda p1, p2: '/'.join((p1.rstrip('/'), p2.lstrip('/'))), path).strip('/')
