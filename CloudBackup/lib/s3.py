@@ -10,7 +10,6 @@ import datetime
 import urllib2
 import time
 import mimetypes
-from xml.etree.ElementTree import Element
 
 from errors import S3Error
 from utils import XML, hmac_sha1, calc_md5
@@ -18,7 +17,7 @@ from crypto import DES
 
 __author__ = "Chine King"
 __description__ = "A client for Amazon S3 api, site: http://aws.amazon.com/documentation/s3/"
-__all__ = ['X_AMZ_ACL', 'S3Bucket', 'S3Object', 'AmazonUser', 'S3Client', 'CryptoS3Client']
+__all__ = ['X_AMZ_ACL', 'REGION', 'S3Bucket', 'S3Object', 'AmazonUser', 'S3Client', 'CryptoS3Client']
 
 ACTION_TYPES = ('PUT', 'GET', 'DELETE')
 GMT_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
@@ -169,8 +168,8 @@ class S3Request(object):
     def _set_content_type(self):
         if self.obj_name is not None and not self.content_type:
             self.content_type = mimetypes.guess_type(self.obj_name)[0]
-        if self.data and self.content_type is None:
-            self.content_type = 'application/x-www-form-urlencoded'
+            if self.data and self.content_type is None:
+                self.content_type = 'application/x-www-form-urlencoded'
             
     def _get_canonicalized_resource(self):
         path = '/'
