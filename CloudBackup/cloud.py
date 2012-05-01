@@ -47,7 +47,7 @@ class CloudFolder(object):
 class VdiskStorage(Storage):
     def __init__(self, client, cache={}):
         '''
-        :param client: must be VdiskClient or it's subclass, CryptoClient eg.
+        :param client: must be VdiskClient or it's subclass, CryptoVdiskClient eg.
         :param cache: the cache to store key-value-pair-> path: id, blank dict as default.
         '''
         
@@ -154,6 +154,12 @@ class VdiskStorage(Storage):
         :param cloud_path: the path on the cloud, 'test' eg, not need to start with '/'
                            list the root path if set to blank('').
         :param recursive(Optional): if set to True, will return the objects recursively.
+        
+        :return: it doesn't return all the objects immediately,
+                 it returns an object each time, and then another, and goes on.
+                 you shoud iterate them by for loop.
+                 of course, you can use list() to put them all into memory,
+                 however, it is not recommended.
         '''
         
         cloud_path = self._ensure_cloud_path_legal(cloud_path)
@@ -182,11 +188,32 @@ class VdiskStorage(Storage):
                         for obj in self.list(path, recursive):
                             yield obj
                             
+    def list_files(self, cloud_path, recursive=False):
+        '''
+        list all the files in a cloud path.
+        
+        :param cloud_path: the path on the cloud, 'test' eg, not need to start with '/'
+                           list the root path if set to blank('').
+        :param recursive(Optional): if set to True, will return the files recursively.
+        
+        :return: it doesn't return all the files immediately,
+                 it returns a file(a CloudFile instance) each time, and then another, and goes on.
+                 you shoud iterate them by for loop.
+                 of course, you can use list() to put them all into memory,
+                 however, it is not recommended.
+        '''
+        
+        for obj in self.list(cloud_path, recursive):
+            if isinstance(obj, CloudFile):
+                yield obj
+                            
     def info(self, cloud_path):
         '''
         Get the infomation of a file on the cloud.
         
         :param cloud_path: the path on the cloud, 'test/file.txt' eg, not need to start with '/'.
+        
+        :return: an instance of CloudFile.
         '''
         
         cloud_path = self._ensure_cloud_path_legal(cloud_path)
