@@ -67,7 +67,7 @@ class VdiskObject(dict):
         if attr in self:
             obj = self[attr]
             if isinstance(obj, list):
-                return [VdiskObject(itm) for itm in list]
+                return [VdiskObject(itm) for itm in obj]
             elif isinstance(obj, dict):
                 return VdiskObject(obj)
             return obj
@@ -232,7 +232,7 @@ class VdiskClient(object):
         :param fid: file id
         :param dir_: the directory where file downloads to
         '''
-        data = self.get_file_info(fid)[0]
+        data = self.get_file_info(fid)
         url, filename = data['s3_url'], data['name']
         
         dest = os.path.join(dir_, filename)
