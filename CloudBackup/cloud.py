@@ -73,6 +73,9 @@ class VdiskStorage(Storage):
         return super(VdiskStorage, self)._ensure_cloud_path_legal(path)
         
     def _get_cloud_dir_id(self, cloud_path):
+        if len(cloud_path) == 0:
+            return 0
+        
         dir_id = self.cache.get(cloud_path, 0)
         if dir_id != 0:
             return dir_id
@@ -141,10 +144,12 @@ class VdiskStorage(Storage):
         
         dir_id = 0
         if '/' in cloud_path:
-            dir_path = cloud_path.rsplit('/', 1)[0]
+            dir_path, cloud_name = tuple(cloud_path.rsplit('/', 1))
             dir_id = self._get_cloud_dir_id(dir_path)
+        else:
+            cloud_name = cloud_path
             
-        self.client.upload_file(filename, dir_id, cover)
+        self.client.upload_file(filename, dir_id, cover, upload_name=cloud_name)
         
     def download(self, cloud_path, filename):
         '''
@@ -156,12 +161,9 @@ class VdiskStorage(Storage):
         
         cloud_path = self._ensure_cloud_path_legal(cloud_path)
         
-        fid, cloud_fname = self._get_cloud_file_id(cloud_path, include_name=True)
-        dirname, local_fname = os.path.split(filename)
+        fid = self._get_cloud_file_id(cloud_path)
         
-        self.client.download_file(fid, dirname)
-        if cloud_fname != local_fname:
-            os.rename(os.path.join(dirname, cloud_fname), filename)
+        self.client.download_file(fid, filename)
             
     def list(self, cloud_path, recursive=False):
         '''

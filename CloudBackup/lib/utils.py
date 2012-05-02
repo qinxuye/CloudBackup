@@ -38,9 +38,14 @@ def encode_multipart(kwargs, encrypt=False, encrypt_func=None):
     
     for k, v in kwargs.iteritems():
         data.append('--%s' % boundary)
-        if hasattr(v, 'read'):
+        if hasattr(v, 'read') or \
+            (isinstance(v, tuple) and len(v) == 2 and hasattr(v[0], 'read')):
             # file-like object:
-            filename = getattr(v, 'name', '')
+            if isinstance(v, tuple):
+                filename = v[1]
+                v = v[0]
+            else:
+                filename = getattr(v, 'name', '')
             content = v.read()
             if encrypt and encrypt_func is not None:
                 content = encrypt_func(content)

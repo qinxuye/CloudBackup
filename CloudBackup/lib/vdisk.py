@@ -163,7 +163,7 @@ class VdiskClient(object):
         return self._base_oper('m=user&a=keep_token', {'token': self.token, 
                                                        'dologid': self.dologid})
         
-    def upload_file(self, filename, dir_id, cover, 
+    def upload_file(self, filename, dir_id, cover, upload_name='',
                     maxsize=10, callback=None, dir_=None, 
                     encrypt=False, encrypt_func=None):
         '''
@@ -171,6 +171,7 @@ class VdiskClient(object):
         :param filename: the absolute path of a file
         :param dir_id: the id of the folder where the file upload to
         :param cover: bool viriable, True if you want to cover the file which exists
+        :param upload_name(optional): the name of file when uploaded to vdisk, blank as local name
         :param maxsize(optional): the max size, 10M as default
         :param callback(optional): the redirect url, msg will be transfered if set
         :param dir_(optional): the dir of file exsits, the param dir_id will be ignored if this is set.
@@ -208,11 +209,14 @@ class VdiskClient(object):
                       'dologid': self.dologid
                       }
             
+            if upload_name and upload_name != os.path.split(filename)[1]:
+                params['file'] = (fp, upload_name)
+            
             if callback:
                 params['callback'] = callback
             if dir_:
                 params['dir'] = dir_
-        
+            
             if encrypt and encrypt_func is not None:
                 params, boundary = encode_multipart(params, True, encrypt_func)
             else:
@@ -226,17 +230,17 @@ class VdiskClient(object):
         finally:
             fp.close()
             
-    def download_file(self, fid, dir_, decrypt=False, decrypt_func=None):
+    def download_file(self, fid, filename, decrypt=False, decrypt_func=None):
         '''
         Download file by file id.
         :param fid: file id
-        :param dir_: the directory where file downloads to
+        :param filename: the local path where file downloads to save
         '''
-        data = self.get_file_info(fid)
-        url, filename = data['s3_url'], data['name']
         
-        dest = os.path.join(dir_, filename)
-        fp = open(dest, 'wb')
+        data = self.get_file_info(fid)
+        url = data['s3_url']
+        
+        fp = open(filename, 'wb')
         
         try:
             resp = urllib2.urlopen(url)
@@ -533,10 +537,10 @@ class CryptoVdiskClient(VdiskClient):
         super(CryptoVdiskClient, self).auth(account, password, app_type)
         self.des = DES(IV)
         
-    def upload_file(self, filename, dir_id, cover, maxsize=10, callback=None, dir_=None, encrypt=True):
-        return super(CryptoVdiskClient, self).upload_file(filename, dir_id, cover, 
+    def upload_file(self, filename, dir_id, cover, upload_name='', maxsize=10, callback=None, dir_=None, encrypt=True):
+        return super(CryptoVdiskClient, self).upload_file(filename, dir_id, cover, upload_name,
                                                           maxsize, callback, dir_, 
                                                           encrypt, self.des.encrypt)
         
-    def download_file(self, fid, dir_, decrypt=True):
-        super(CryptoVdiskClient, self).download_file(fid, dir_, decrypt, self.des.decrypt)
+    def download_file(self, fid, filename, decrypt=True):
+        super(CryptoVdiskClient, self).download_file(fid, filename, decrypt, self.des.decrypt)
