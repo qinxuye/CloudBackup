@@ -266,7 +266,7 @@ class S3Storage(Storage):
             
         self.put_bucket(holder_name)
         
-    def set_hodler(self, holder_name):
+    def set_holder(self, holder_name):
         self.holder = holder_name
         self._ensure_holder_exist(self.holder)
         
