@@ -167,7 +167,7 @@ class VdiskStorage(Storage):
             
     def list(self, cloud_path, recursive=False):
         '''
-        list all objects include folders and files in a cloud path.
+        List all objects include folders and files in a cloud path.
         
         :param cloud_path: the path on the cloud, 'test' eg, not need to start with '/'
                            list the root path if set to blank('').
@@ -207,7 +207,7 @@ class VdiskStorage(Storage):
                             
     def list_files(self, cloud_path, recursive=False):
         '''
-        list all the files in a cloud path.
+        List all the files in a cloud path.
         
         :param cloud_path: the path on the cloud, 'test' eg, not need to start with '/'
                            list the root path if set to blank('').
@@ -294,7 +294,7 @@ class S3Storage(Storage):
     
     def list(self, cloud_path, recursive=False):
         '''
-        list all objects include folders and files in a cloud path.
+        List all objects including folders and files in a cloud path.
         
         :param cloud_path: the path on the cloud, 'test' eg, not need to start with '/'
                            list the root path if set to blank('').
@@ -339,7 +339,7 @@ class S3Storage(Storage):
             
     def list_files(self, cloud_path, recursive=False):
         '''
-        list all the files in a cloud path.
+        List all the files in a cloud path.
         
         :param cloud_path: the path on the cloud, 'test' eg, not need to start with '/'
                            list the root path if set to blank('').
