@@ -97,7 +97,8 @@ class SyncHandler(threading.Thread):
         for f in self.storage.list_files('', recursive):
             path, timestamp = self.cloud_to_local(f.path)
             path = path.encode('utf-8')
-            yield path    
+            f.path = path
+            yield f
             
     def _get_cloud_files(self):
         files = {}
@@ -201,7 +202,9 @@ class S3SyncHandler(SyncHandler):
                 path = path.decode('raw-unicode-escape').encode('utf-8')
             elif isinstance(path, unicode):
                 path = path.encode('utf-8')
-            yield path    
+            f.path = path
+            
+            yield f    
         
     def _get_cloud_files(self):
         files = {}
