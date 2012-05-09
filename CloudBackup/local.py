@@ -92,6 +92,12 @@ class SyncHandler(threading.Thread):
                 return path, -1
         else:
             return path, -1
+        
+    def list_cloud(self, recursive=False):
+        for f in self.storage.list_files('', recursive):
+            path, timestamp = self.cloud_to_local(f.path)
+            path = path.encode('utf-8')
+            yield path    
             
     def _get_cloud_files(self):
         files = {}
@@ -187,6 +193,15 @@ class S3SyncHandler(SyncHandler):
         super(S3SyncHandler, self).__init__(storage, folder_name, loop, sec)
         
         assert isinstance(storage, S3Storage)
+        
+    def list_cloud(self, recursive=False):
+        for f in self.storage.list_files('', recursive):
+            path, _ = self.cloud_to_local(f.path)
+            if isinstance(path, str):
+                path = path.decode('raw-unicode-escape').encode('utf-8')
+            elif isinstance(path, unicode):
+                path = path.encode('utf-8')
+            yield path    
         
     def _get_cloud_files(self):
         files = {}

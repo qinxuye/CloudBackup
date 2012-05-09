@@ -22,8 +22,8 @@ Created on 2012-5-19
 
 import os
 import time
-import platform
-import subprocess
+
+from utils import win_hide_file
 
 class Log(object):
     def __init__(self, log_file, hide=True):
@@ -35,10 +35,8 @@ class Log(object):
         self.hide = hide
             
     def _win_hide(self):
-        sys_name = platform.system()
-        if self.hide and sys_name == 'Windows' \
-            and os.path.exists(self.log_file):
-            subprocess.call('attrib +h %s' % self.log_file, shell=True)
+        if self.hide:
+            win_hide_file(self.log_file)
         
     def write(self, itm):
         fp = open(self.log_file, 'a+')

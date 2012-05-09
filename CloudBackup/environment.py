@@ -21,6 +21,7 @@ Created on 2012-5-19
 '''
 
 import threading
+import os
 
 from CloudBackup.lib.vdisk import VdiskClient, CryptoVdiskClient
 from CloudBackup.lib.s3 import S3Client, CryptoS3Client
@@ -29,10 +30,13 @@ from CloudBackup.lib.errors import VdiskError, S3Error, GSError
 from CloudBackup.cloud import VdiskStorage, S3Storage, GSStorage
 from CloudBackup.local import SyncHandler, S3SyncHandler
 from CloudBackup.errors import CloudBackupError
+from CloudBackup.utils import win_hide_file
 from CloudBackup.test.settings import VDISK_APP_KEY, VDISK_APP_SECRET
 
 DEFAULT_SLEEP_MINUTS = 1
 DEFAULT_SLEEP_SECS = DEFAULT_SLEEP_MINUTS * 60
+
+OFFSET = 3
 
 class Environment(object):
     instance = None
@@ -53,7 +57,7 @@ class Environment(object):
         return cls.instance
     
     def setup_vdisk(self, account, password, local_folder, holder, is_weibo=False, 
-                    log=True, encrypt=False, encrypt_code=None, force_stop=False):
+                    log=True, encrypt=False, encrypt_code=None, force_stop=True):
         try:
             self.vdisk_lock.acquire()
             
@@ -76,6 +80,8 @@ class Environment(object):
                 handler = SyncHandler(storage, local_folder, sec=DEFAULT_SLEEP_SECS, log=log)
                 handler.start()
                 self.vdisk_handler = handler
+                
+                self.save_vdisk_info(account, password, is_weibo, log, encrypt, encrypt_code)
                 return handler
             except VdiskError, e:
                 raise CloudBackupError(e.src, e.err_no, e.msg)
@@ -86,12 +92,66 @@ class Environment(object):
         try:
             self.vdisk_lock.acquire()
             
+            if self.vdisk_handler is None:
+                return
+            
             self.vdisk_handler.stop()
+            self.vdisk_handler = None
         finally:
             self.vdisk_lock.release()
+            
+    def save_vdisk_info(self, account, password, is_weibo=False, 
+                           log=True, encrypt=False, encrypt_code=None, offset=OFFSET):
+        
+        if self.vdisk_handler is None:
+            return
+        
+        save_file = os.path.join(self.vdisk_handler.folder_name, '.vdisk.setting.txt')
+        
+        args = locals()
+        
+        fp = open(save_file, 'w')
+        try:
+            for arg in ('account', 'password',
+                        'is_weibo', 'log', 'encrypt', 'encrypt_code'):
+                if arg == 'password':
+                    args['password'] = ','.join((str(ord(l) + offset) for l in args.pop('password')))
+                
+                fp.write(arg + '\t' + str(args[arg]) + '\n')
+                
+            win_hide_file(save_file)
+        finally:
+            fp.close()
+            
+    def load_vdisk_info(self, folder_name, offset=OFFSET):
+        
+        save_file = os.path.join(folder_name, '.vdisk.setting.txt')
+        
+        if not os.path.exists(save_file):
+            return
+        
+        args = {}
+        
+        fp = open(save_file, 'r')
+        try:
+            for line in fp.readlines():
+                arg, content = line.strip().split('\t')
+                if arg == 'password':
+                    args['password'] = ''.join((chr(int(l) - offset) \
+                                                for l in content.split(',')))
+                elif arg == 'is_weibo' or arg == 'log' or arg == 'encrypt':
+                    args[arg] = bool(content)
+                elif arg == 'encrypt_code':
+                    args[arg] = None if content == 'None' else content
+                else:
+                    args[arg] = content
+                    
+            return args
+        finally:
+            fp.close()
         
     def setup_s3(self, access_key, secret_access_key, local_folder, holder,
-                 log=True, encrypt=False, encrypt_code=None, force_stop=False):
+                 log=True, encrypt=False, encrypt_code=None, force_stop=True):
         try:
             self.s3_lock.acquire()
         
@@ -122,12 +182,61 @@ class Environment(object):
         try:
             self.s3_lock.acquire()
             
+            if self.s3_handler is None:
+                return
+            
             self.s3_handler.stop()
+            self.s3_handler = None
         finally:
             self.s3_lock.release()
+            
+    def save_s3_info(self, access_key, secret_access_key,
+                           log=True, encrypt=False, encrypt_code=None):
+        
+        if self.s3_handler is None:
+            return
+        
+        save_file = os.path.join(self.s3_handler.folder_name, '.s3.setting.txt')
+        
+        args = locals()
+        
+        fp = open(save_file, 'w')
+        try:
+            for arg in ('access_key', 'secret_access_key',
+                        'log', 'encrypt', 'encrypt_code'):
+                fp.write(arg + '\t' + str(args[arg]) + '\n')
+                
+            win_hide_file(save_file)
+        finally:
+            fp.close()
+            
+    def load_s3_info(self, folder_name):
+        
+        save_file = os.path.join(folder_name, '.s3.setting.txt')
+        
+        if not os.path.exists(save_file):
+            return
+        
+        args = {}
+        
+        fp = open(save_file, 'r')
+        try:
+            for line in fp.readlines():
+                arg, content = line.strip().split('\t')
+                
+                if arg == 'log' or arg == 'encrypt':
+                    args[arg] = bool(content)
+                elif arg == 'encrypt_code':
+                    args[arg] = None if content == 'None' else content
+                else:
+                    args[arg] = content
+                    
+            return args
+        finally:
+            fp.close()
         
     def setup_gs(self, access_key, secret_access_key, project_id, local_folder, holder,
-                 log=True, encrypt=False, encrypt_code=None, force_stop=False):
+                 log=True, encrypt=False, encrypt_code=None, force_stop=True):
         try:
             self.gs_lock.acquire()
         
@@ -158,6 +267,55 @@ class Environment(object):
         try:
             self.gs_lock.acquire()
             
+            if self.gs_handler is None:
+                return
+            
             self.gs_handler.stop()
+            self.gs_handler = None
         finally:
             self.gs_lock.release()
+            
+    def save_gs_info(self, access_key, secret_access_key, project_id,
+                           log=True, encrypt=False, encrypt_code=None):
+        
+        if self.gs_handler is None:
+            return
+        
+        save_file = os.path.join(self.gs_handler.folder_name, '.gs.setting.txt')
+        
+        args = locals()
+        
+        fp = open(save_file, 'w')
+        try:
+            for arg in ('access_key', 'secret_access_key', 'project_id'
+                        'log', 'encrypt', 'encrypt_code'):
+                fp.write(arg + '\t' + str(args[arg]) + '\n')
+                
+            win_hide_file(save_file)
+        finally:
+            fp.close()
+            
+    def load_gs_info(self, folder_name):
+        
+        save_file = os.path.join(folder_name, '.gs.setting.txt')
+        
+        if not os.path.exists(save_file):
+            return
+        
+        args = {}
+        
+        fp = open(save_file, 'r')
+        try:
+            for line in fp.readlines():
+                arg, content = line.strip().split('\t')
+                
+                if arg == 'log' or arg == 'encrypt':
+                    args[arg] = bool(content)
+                elif arg == 'encrypt_code':
+                    args[arg] = None if content == 'None' else content
+                else:
+                    args[arg] = content
+                    
+            return args
+        finally:
+            fp.close()

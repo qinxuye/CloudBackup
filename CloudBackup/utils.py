@@ -24,6 +24,8 @@ __author__ = "Chine King"
 
 import os
 import sys
+import platform
+import subprocess
 
 def join_path(*path):
     return '/'.join([p.strip('/') for p in path])
@@ -33,3 +35,8 @@ def join_local_path(*path):
 
 def get_sys_encoding():
     return sys.getfilesystemencoding()
+
+def win_hide_file(log_file):
+    sys_name = platform.system()
+    if sys_name == 'Windows' and os.path.exists(log_file):
+        subprocess.call('attrib +h %s' % log_file, shell=True)
