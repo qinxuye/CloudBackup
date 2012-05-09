@@ -6,11 +6,9 @@ Created on 2012-5-1
 @author: Chine
 '''
 
-import os
-
 from CloudBackup.lib.vdisk import VdiskClient
 from CloudBackup.lib.s3 import S3Client
-from CloudBackup.lib.errors import VdiskError
+from CloudBackup.lib.errors import VdiskError, S3Error
 from CloudBackup.utils import join_path
 
 __author__ = "Chine King"
@@ -26,6 +24,9 @@ class Storage(object):
         raise NotImplementedError
     
     def download(self, cloud_path, filename):
+        raise NotImplementedError
+    
+    def delete(self, cloud_path, filename):
         raise NotImplementedError
     
     def list(self, cloud_path, recursive=False):
@@ -72,7 +73,7 @@ class VdiskStorage(Storage):
         path = join_path(self.holder, cloud_path)
         return super(VdiskStorage, self)._ensure_cloud_path_legal(path)
         
-    def _get_cloud_dir_id(self, cloud_path):
+    def _get_cloud_dir_id(self, cloud_path, create_if_not_exist=False):
         if len(cloud_path) == 0:
             return 0
         
@@ -88,11 +89,12 @@ class VdiskStorage(Storage):
             self.cache[cloud_path] = str(dir_id)
             return dir_id
         except VdiskError, e:
-            if e.err_no == 3: # means the dir not exist
+            if create_if_not_exist and e.err_no == 3: # means the dir not exist
                 parent_id = 0
                 if '/' in cloud_path:
                     parent_path, name = tuple(cloud_path.rsplit('/', 1))
-                    parent_id = self._get_cloud_dir_id(parent_path)
+                    parent_id = self._get_cloud_dir_id(parent_path, 
+                                                       create_if_not_exist=create_if_not_exist)
                 else:
                     name = cloud_path
                     
@@ -145,7 +147,7 @@ class VdiskStorage(Storage):
         dir_id = 0
         if '/' in cloud_path:
             dir_path, cloud_name = tuple(cloud_path.rsplit('/', 1))
-            dir_id = self._get_cloud_dir_id(dir_path)
+            dir_id = self._get_cloud_dir_id(dir_path, create_if_not_exist=True)
         else:
             cloud_name = cloud_path
             
@@ -164,6 +166,22 @@ class VdiskStorage(Storage):
         fid = self._get_cloud_file_id(cloud_path)
         
         self.client.download_file(fid, filename)
+        
+    def delete(self, cloud_path):
+        '''
+        Delete the path in the cloud. If folder, delete all files and folders it contains.
+        
+        :param cloud_path: the path on the cloud, 'test/file.txt' eg, not need to start with '/'
+        '''
+        
+        cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        
+        try:
+            dir_id = self._get_cloud_dir_id(cloud_path)
+            self.client.delete_dir(dir_id)
+        except VdiskError:
+            fid = self._get_cloud_file_id(cloud_path)
+            self.client.delete_file(fid)
             
     def list(self, cloud_path, recursive=False):
         '''
@@ -291,6 +309,19 @@ class S3Storage(Storage):
         
         cloud_path = self._ensure_cloud_path_legal(cloud_path)
         self.client.download_file(filename, self.holder, cloud_path)
+        
+    def delete(self, cloud_path):
+        '''
+        Delete the path in the cloud. If folder, delete all files and folders it contains.
+        
+        :param cloud_path: the path on the cloud, 'test/file.txt' eg, not need to start with '/'
+        '''
+        
+        cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        
+        self.client.delete_object(self.holder, cloud_path)
+        for obj in self.list_files(cloud_path, recursive=True):
+                self.client.delete_object(self.holder, obj.path)
     
     def list(self, cloud_path, recursive=False):
         '''
