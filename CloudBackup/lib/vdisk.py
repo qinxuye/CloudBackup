@@ -37,7 +37,7 @@ def _call(url_params, params, headers=None, method="POST", try_times=3, try_inte
         
         # if method is POST
         path = "%s?%s" % (endpoint, url_params)
-        if isinstance(params, str):
+        if isinstance(params, (str, unicode)):
             encoded_params = params
         else:
             encoded_params = urllib.urlencode(params)
