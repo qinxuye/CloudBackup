@@ -7,7 +7,8 @@ Created on 2012-5-1
 '''
 
 from CloudBackup.lib.vdisk import VdiskClient
-from CloudBackup.lib.s3 import S3Client
+from CloudBackup.lib.s3 import (S3Client, get_end_point,ALL_USERS_URI, 
+                                ACL_PERMISSION, S3AclGrantByURI)
 from CloudBackup.lib.errors import VdiskError, S3Error
 from CloudBackup.utils import join_path
 
@@ -134,7 +135,7 @@ class VdiskStorage(Storage):
                         return itm.id, itm.name
                     return itm.id
                 
-        raise VdiskError('-1', 'File does\'t exist.')
+        raise VdiskError(-1, 'File does\'t exist.')
     
     def upload(self, cloud_path, filename, cover=True):
         '''
@@ -262,6 +263,20 @@ class VdiskStorage(Storage):
         kwargs['content_type'] = kwargs.pop('type')
         return CloudFile(**kwargs)
     
+    def share(self, cloud_path):
+        '''
+        Share a file on the cloud.
+        
+        param cloud_path: the path on the cloud, 'test/file.txt' eg, not need to start with '/'.
+        
+        :return: the path to download.
+        '''
+        
+        cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        
+        fid = self._get_cloud_file_id(cloud_path)
+        return self.client.share_file(fid).download_page
+    
 class S3Storage(Storage):
     def __init__(self, client, holder_name):
         '''
@@ -324,7 +339,7 @@ class S3Storage(Storage):
         
         self.client.delete_object(self.holder, cloud_path)
         for obj in self.list_files(cloud_path, recursive=True):
-                self.client.delete_object(self.holder, obj.path)
+            self.client.delete_object(self.holder, obj.path)
     
     def list(self, cloud_path, recursive=False):
         '''
@@ -423,3 +438,23 @@ class S3Storage(Storage):
         kwargs['path'] = cloud_path
         
         return CloudFile(**kwargs)
+    
+    def share(self, cloud_path):
+        '''
+        Share a file on the cloud.
+        
+        param cloud_path: the path on the cloud, 'test/file.txt' eg, not need to start with '/'.
+        
+        :return: the path to download.
+        '''
+        
+        cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        
+        if hasattr(self.client, 'owner'):
+            owner = self.client.owner
+            grant = S3AclGrantByURI(ALL_USERS_URI, ACL_PERMISSION.read)
+            self.client.put_object_acl(self.holder, cloud_path, owner, grant)
+            
+            return get_end_point(self.holder, cloud_path)
+        else:
+            raise S3Error(None, -1, 'share need S3Client set owner.')

@@ -17,7 +17,7 @@ from crypto import DES
 
 __author__ = "Chine King"
 __description__ = "A client for Amazon S3 api, site: http://aws.amazon.com/documentation/s3/"
-__all__ = ['X_AMZ_ACL', 'REGION','ACL_PERMISSION', 'ALL_USERS_URI', 
+__all__ = ['X_AMZ_ACL', 'REGION','ACL_PERMISSION', 'ALL_USERS_URI', 'get_end_point',
            'S3AclGrantByPersonID', 'S3AclGrantByEmail', 'S3AclGrantByURI',
            'S3Bucket', 'S3Object', 'AmazonUser', 'S3Client', 'CryptoS3Client']
 
@@ -105,7 +105,7 @@ class S3ACL(object):
                }
 
 class S3AclGrant(object):
-    'Base S3 acl grant.'
+    'Base S3 acl grant. refer to http://docs.amazonwebservices.com/AmazonS3/latest/API/RESTObjectPUTacl.html'
     
     def _get_grant(self):
         raise NotImplementedError
@@ -117,6 +117,11 @@ class S3AclGrant(object):
             return '\n'.join((self._get_grant(p) for p in self.permission))
     
 class S3AclGrantByPersonID(S3AclGrant):
+    '''
+    S3 acl grant, need the user's canonical id, and user's display name.
+    permission value can be  FULL_CONTROL | WRITE | WRITE_ACP | READ | READ_ACP
+    '''
+    
     def __init__(self, amazon_user, permission):
         assert isinstance(amazon_user, AmazonUser)
         
@@ -131,6 +136,11 @@ class S3AclGrantByPersonID(S3AclGrant):
                }
         
 class S3AclGrantByEmail(S3AclGrant):
+    '''
+    S3 acl grant, need the user's email address.
+    permission value can be  FULL_CONTROL | WRITE | WRITE_ACP | READ | READ_ACP
+    '''
+    
     def __init__(self, email_address, permission):
         self.email = email_address
         self.permission = permission
@@ -142,6 +152,11 @@ class S3AclGrantByEmail(S3AclGrant):
                }
         
 class S3AclGrantByURI(S3AclGrant):
+    '''
+    S3 acl grant, need the uri.
+    permission value can be  FULL_CONTROL | WRITE | WRITE_ACP | READ | READ_ACP
+    '''
+    
     def __init__(self, uri, permission):
         self.uri = uri
         self.permission = permission
@@ -377,9 +392,16 @@ class S3Client(object):
     # call the Amazon S3 api
     '''
     
-    def __init__(self, access_key, secret_access_key):
+    def __init__(self, access_key, secret_access_key, 
+                 canonical_user_id=None, user_display_name=None):
         self.access_key = access_key
         self.secret_key = secret_access_key
+        
+        if canonical_user_id and user_display_name:
+            self.owner = AmazonUser(canonical_user_id, user_display_name)
+            
+    def set_owner(self, owner):
+        self.owner = owner
         
     def _parse_list_buckets(self, data):
         tree = XML.loads(data)
@@ -457,6 +479,15 @@ class S3Client(object):
         return req.submit()
     
     def put_bucket_acl(self, bucket_name, owner, *grants):
+        '''
+        Set bucket's acl.
+        
+        :param bucket_name
+        :param owner: an instance of AmazonUser, the owner of the bucket.
+        :param *grants: each of which is an instance of S3AclGrant, 
+                        or it's subclass: S3AclGrantByPersonID, S3AclGrantByEmail, S3AclGrantByURI
+        '''
+        
         acl = str(S3ACL(owner, *grants))
         
         req = S3Request(self.access_key, self.secret_key, 'PUT',
@@ -564,6 +595,16 @@ class S3Client(object):
         return req.submit()
     
     def put_object_acl(self, bucket_name, obj_name, owner, *grants):
+        '''
+        Set object's acl.
+        
+        :param bucket_name: which bucket the object puts into.
+        :param obj_name: the obj name, as the format: 'folder/file.txt' or 'file.txt'.
+        :param owner: an instance of AmazonUser, the owner of the bucket.
+        :param *grants: each of which is an instance of S3AclGrant, 
+                        or it's subclass: S3AclGrantByPersonID, S3AclGrantByEmail, S3AclGrantByURI
+        '''
+        
         acl = str(S3ACL(owner, *grants))
         
         req = S3Request(self.access_key, self.secret_key, 'PUT',
