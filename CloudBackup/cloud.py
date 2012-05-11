@@ -38,6 +38,9 @@ class Storage(object):
     def info(self, cloud_path):
         raise NotImplementedError
     
+    def share(self, cloud_path):
+        raise NotImplementedError
+    
 class CloudFile(object):
     def __init__(self, path, content_type, md5, **kwargs):
         self.path = path

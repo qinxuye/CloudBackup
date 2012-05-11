@@ -20,6 +20,13 @@ except ImportError:
 
 from errors import CloudBackupLibError
 
+def iterable(obj):
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False
+
 def hmac_sha256_hex(secret, data):
     return hmac.new(secret, data, sha256).hexdigest()
 

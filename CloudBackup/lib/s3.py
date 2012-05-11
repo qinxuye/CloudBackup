@@ -12,12 +12,14 @@ import time
 import mimetypes
 
 from errors import S3Error
-from utils import XML, hmac_sha1, calc_md5
+from utils import XML, hmac_sha1, calc_md5, iterable
 from crypto import DES
 
 __author__ = "Chine King"
 __description__ = "A client for Amazon S3 api, site: http://aws.amazon.com/documentation/s3/"
-__all__ = ['X_AMZ_ACL', 'REGION', 'S3Bucket', 'S3Object', 'AmazonUser', 'S3Client', 'CryptoS3Client']
+__all__ = ['X_AMZ_ACL', 'REGION','ACL_PERMISSION', 'ALL_USERS_URI', 
+           'S3AclGrantByPersonID', 'S3AclGrantByEmail', 'S3AclGrantByURI',
+           'S3Bucket', 'S3Object', 'AmazonUser', 'S3Client', 'CryptoS3Client']
 
 ACTION_TYPES = ('PUT', 'GET', 'DELETE')
 GMT_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
@@ -26,6 +28,35 @@ STRING_TO_SIGN = '''%(action)s
 %(content_type)s
 %(date)s
 %(c_amz_headers)s%(c_resource)s'''
+ALL_USERS_URI = 'http://acs.amazonaws.com/groups/global/AllUsers'
+ACL = '''<AccessControlPolicy>
+  <Owner>
+    <ID>%(owner_id)s</ID>
+    <DisplayName>%(owner_display_name)s</DisplayName>
+  </Owner>
+  <AccessControlList>
+%(grants)s
+  </AccessControlList>
+</AccessControlPolicy>'''
+GRANT_BY_PERSON_ID = '''    <Grant>
+      <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="CanonicalUser">
+        <ID>%(user_id)s</ID>
+        <DisplayName>%(user_display_name)s</DisplayName>
+      </Grantee>
+      <Permission>%(user_permission)s</Permission>
+    </Grant>'''
+GRANT_BY_EMAIL = '''    <Grant>
+      <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="AmazonCustomerByEmail">
+        <EmailAddress>%(user_email)s</EmailAddress>
+      </Grantee>
+      <Permission>%(user_permission)s</Permission>
+    </Grant>'''
+GRANT_BY_URI = '''    <Grant>
+      <Grantee xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Group">
+        <URI>%(uri)s</URI>
+      </Grantee>
+      <Permission>%(user_permission)s</Permission>
+    </Grant>'''
 
 end_point = "http://s3.amazonaws.com"
 def get_end_point(bucket_name=None, obj_name=None, http=False):
@@ -44,6 +75,12 @@ class XAmzAcl(object):
             setattr(self, val.replace('-', '_'), val)
 X_AMZ_ACL = XAmzAcl()
 
+class AclPermission(object):
+    def __init__(self):
+        for val in ('FULL_CONTROL', 'WRITE', 'WRITE_ACP', 'READ', 'READ_ACP'):
+            setattr(self, val.lower(), val)
+ACL_PERMISSION = AclPermission()
+
 class Region(object):
     def __init__(self):
         for val in ('EU', 'eu-west-1', 'us-west-1', 'us-west-2', 
@@ -54,6 +91,66 @@ REGION = Region()
 region_content = '''<CreateBucketConfiguration xmlns="http://s3.amazonaws.com/doc/2006-03-01/"> 
   <LocationConstraint>%s</LocationConstraint> 
 </CreateBucketConfiguration >'''
+
+class S3ACL(object):
+    def __init__(self, owner, *grants):
+        self.owner = owner
+        self.grants_str = '\n'.join((str(grant) for grant in grants))
+    
+    def __str__(self):
+        return ACL % {
+                  'owner_id': self.owner.id_,
+                  'owner_display_name': self.owner.display_name,
+                  'grants': self.grants_str
+               }
+
+class S3AclGrant(object):
+    'Base S3 acl grant.'
+    
+    def _get_grant(self):
+        raise NotImplementedError
+    
+    def __str__(self):
+        if isinstance(self.permission, str):
+            return self._get_grant(self.permission)
+        elif iterable(self.permission):
+            return '\n'.join((self._get_grant(p) for p in self.permission))
+    
+class S3AclGrantByPersonID(S3AclGrant):
+    def __init__(self, amazon_user, permission):
+        assert isinstance(amazon_user, AmazonUser)
+        
+        self.user = amazon_user
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_PERSON_ID % {
+                    'user_id': self.amazon_user.id_,
+                    'user_display_name': self.amazon_user.display_name,
+                    'user_permission': permission
+               }
+        
+class S3AclGrantByEmail(S3AclGrant):
+    def __init__(self, email_address, permission):
+        self.email = email_address
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_EMAIL % {
+                    'user_email': self.email,
+                    'user_permission': permission
+               }
+        
+class S3AclGrantByURI(S3AclGrant):
+    def __init__(self, uri, permission):
+        self.uri = uri
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_URI % {
+                    'uri': self.uri,
+                    'user_permission': permission
+               }
 
 class S3Base(object):
     def __init__(self, **kwargs):
@@ -119,11 +216,25 @@ class S3Object(S3Base):
 
 class AmazonUser(object):
     mapping = {'id_': 'ID',
-               'display_name': 'DisplayName'}
+               'display_name': 'DisplayName',
+               'uri': 'URI'}
     
-    def __init__(self, id_=None, display_name=None):
+    def __init__(self, id_=None, display_name=None, uri=None):
         self.id_ = id_
         self.display_name = display_name
+        self.uri = uri
+        
+    def __eq__(self, other_user):
+        return self.id_ == other_user.id_ and \
+            self.display_name == other_user.display_name
+            
+    def __hash__(self):
+        return hash(self.id_) ^ hash(self.display_name)
+            
+    def __str__(self):
+        if self.display_name:
+            return self.display_name
+        return ''
         
     @classmethod
     def from_xml(cls, tree):
@@ -345,6 +456,14 @@ class S3Client(object):
         
         return req.submit()
     
+    def put_bucket_acl(self, bucket_name, owner, *grants):
+        acl = str(S3ACL(owner, *grants))
+        
+        req = S3Request(self.access_key, self.secret_key, 'PUT',
+                        bucket_name=bucket_name, obj_name='?acl', data=acl)
+        return req.submit()
+        
+    
     def _parse_get_bucket(self, data):
         tree = XML.loads(data)
         bucket = S3Bucket.from_xml(tree)
@@ -369,6 +488,42 @@ class S3Client(object):
         req = S3Request(self.access_key, self.secret_key, 'GET',
                         bucket_name=bucket_name)
         return req.submit(callback=self._parse_get_bucket)
+    
+    def _parse_get_acl(self, data):
+        tree = XML.loads(data)
+        
+        owner = AmazonUser.from_xml(tree.find('Owner'))
+        
+        grants = {}
+        for grant in tree.findall('AccessControlList/Grant'):
+            user = AmazonUser.from_xml(grant.find('Grantee'))
+            permission = grant.find('Permission').text
+            
+            if not user.display_name and user.uri == ALL_USERS_URI:
+                user.display_name = 'AllUsers'
+            
+            if user not in grants:
+                grants[user] = [permission]
+            else:
+                if permission not in grants[user]:
+                    grants[user].append(permission)
+               
+        return owner, grants
+    
+    def get_bucket_acl(self, bucket_name):
+        '''
+        Get buckt's acl.
+        
+        :param bucket_name
+        
+        :return 0: the owner of the buckt, an instance of AmazonUser.
+        :return 1: a dict. key is an instance of AmazonUser, value is the permission of this user.
+                   permission value can be  FULL_CONTROL | WRITE | WRITE_ACP | READ | READ_ACP
+        '''
+        
+        req = S3Request(self.access_key, self.secret_key, 'GET',
+                        bucket_name=bucket_name, obj_name='?acl')
+        return req.submit(callback=self._parse_get_acl)
     
     def delete_bucket(self, bucket_name):
         '''
@@ -408,6 +563,14 @@ class S3Client(object):
                         content_type=content_type, metadata=metadata, amz_headers=amz_headers)
         return req.submit()
     
+    def put_object_acl(self, bucket_name, obj_name, owner, *grants):
+        acl = str(S3ACL(owner, *grants))
+        
+        req = S3Request(self.access_key, self.secret_key, 'PUT',
+                        bucket_name=bucket_name, obj_name='%s?acl'%obj_name, data=acl)
+        return req.submit()
+        
+    
     def get_object(self, bucket_name, obj_name):
         '''
         Get object.
@@ -421,6 +584,11 @@ class S3Client(object):
         req = S3Request(self.access_key, self.secret_key, 'GET',
                         bucket_name=bucket_name, obj_name=obj_name)
         return req.submit(include_headers=True, callback=lambda data, headers: S3Object(data=data, **headers))
+    
+    def get_object_acl(self, bucket_name, obj_name):
+        req = S3Request(self.access_key, self.secret_key, 'GET',
+                        bucket_name=bucket_name, obj_name='%s?acl'%obj_name)
+        return req.submit(callback=self._parse_get_acl)
     
     def delete_object(self, bucket_name, obj_name):
         '''

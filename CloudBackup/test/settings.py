@@ -15,6 +15,8 @@ VDISK_TEST_PASSWORD = ''
 # Amazon S3
 S3_ACCESS_KEY = ''
 S3_SECRET_ACCESS_KEY = ''
+CANONICAL_USER_ID = ''
+USER_DISPLAY_NAME = ''
 
 try:
     from local_settings import *
