@@ -17,7 +17,8 @@ from crypto import DES
 
 __author__ = "Chine King"
 __description__ = "A client for Amazon S3 api, site: http://aws.amazon.com/documentation/s3/"
-__all__ = ['X_AMZ_ACL', 'REGION','ACL_PERMISSION', 'ALL_USERS_URI', 'get_end_point',
+__all__ = ['get_end_point', 'STRING_TO_SIGN',
+           'X_AMZ_ACL', 'REGION', 'ACL_PERMISSION', 'ALL_USERS_URI',
            'S3AclGrantByPersonID', 'S3AclGrantByEmail', 'S3AclGrantByURI',
            'S3Bucket', 'S3Object', 'AmazonUser', 'S3Client', 'CryptoS3Client']
 
