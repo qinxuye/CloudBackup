@@ -6,18 +6,75 @@ Created on 2012-5-12
 @author: Chine
 '''
 
-from s3 import S3Bucket, S3Object, AmazonUser, S3Request
+from s3 import (S3Bucket, S3Object, AmazonUser, S3Request, 
+                S3ACL, S3AclGrant, S3AclGrantByEmail)
 from errors import S3Error, GSError
 from utils import hmac_sha1, calc_md5, XML
 
 __author__ = "Chine King"
 __description__ = "A client for Google Cloud Storage api, site: https://developers.google.com/storage/"
+__all__ = ['get_end_point', 'X_GOOG_ACL', 'ACL_PERMISSION',
+           'GSAclGrantByUserID', 'GSAclGrantByUserEmail', 
+           'GSAclGrantByGroupID', 'GSAclGrantByGroupEmail',
+           'GSAclGrantByAllUsers', 'GSAclGrantByAllAuthenticatedUsers',
+           'GSBucket', 'GSObject', 'GSUser', 'GSClient']
 
+ACTION_TYPES = ('PUT', 'GET', 'DELETE', 'HEAD', 'POST')
 STRING_TO_SIGN = '''%(action)s
 %(content_md5)s
 %(content_type)s
 %(date)s
 %(c_extension_headers)s%(c_resource)s'''
+ACL = '''<AccessControlList>
+  <Owner>
+    <ID>%(owner_id)s</ID>
+    <Name></Name>
+  </Owner>
+  <Entries>
+%(grants)s
+  </Entries>
+</AccessControlList>'''
+GRANT_BY_USER_ID = '''    <Entry>
+      <Scope type="UserById">
+        <ID>%(user_id)s</ID>
+        <Name></Name>
+      </Scope>
+      <Permission>%(user_permission)s</Permission>
+    </Entry>'''
+GRANT_BY_USER_EMAIL = '''    <Entry>
+      <Scope type="UserByEmail">
+        <EmailAddress>%(user_email)s</EmailAddress>
+        <Name></Name>
+      </Scope>
+      <Permission>%(user_permission)s</Permission>
+    </Entry>'''
+GRANT_BY_GROUP_ID = '''    <Entry>
+      <Scope type="GroupById">
+        <ID>%(group_id)s</ID>
+        <Name></Name>
+      </Scope>
+      <Permission>%(user_permission)s</Permission>
+    </Entry>'''
+GRANT_BY_GROUP_EMAIL = '''    <Entry>
+      <Scope type="GroupByEmail">
+        <EmailAddress>%(group_email)s</EmailAddress>
+      </Scope>
+      <Permission>%(user_permission)s</Permission>
+    </Entry>'''
+GRANT_BY_GROUP_DOMAIN = '''    <Entry>
+      <Scope type="GroupByDomain">
+        <Domain>%(group_domain)s</Domain>
+      </Scope>
+      <Permission>%(user_permission)s</Permission>
+    </Entry>'''
+GRANT_BY_ALL_USERS = '''    <Entry>
+      <Scope type="AllUsers" />
+      <Permission>%(user_permission)s</Permission>
+    </Entry>'''
+GRANT_BY_ALL_AUTHENTICATED_USERS = '''    <Entry>
+      <Scope type="AllAuthenticatedUsers" />
+      <Permission>%(user_permission)s</Permission>
+    </Entry>'''
 
 end_point = "http://commondatastorage.googleapis.com"
 def get_end_point(bucket_name=None, obj_name=None, http=False):
@@ -27,6 +84,121 @@ def get_end_point(bucket_name=None, obj_name=None, http=False):
     if not obj_name:
         return url
     return url + obj_name if obj_name.startswith('/') else url + '/' + obj_name
+
+class XGoogAcl(object):
+    def __init__(self):
+        for val in ('private', 'public-read', 'public-read-write', 
+                    'authenticated-read', 'bucket-owner-read', 
+                    'bucket-owner-full-control'):
+            setattr(self, val.replace('-', '_'), val)
+X_GOOG_ACL = XGoogAcl()
+
+class AclPermission(object):
+    def __init__(self):
+        for val in ('FULL_CONTROL', 'WRITE', 'READ'):
+            setattr(self, val.lower(), val)
+ACL_PERMISSION = AclPermission()
+
+class GSACL(S3ACL):
+    '''Google Cloud Storage acl'''
+    
+    def __str__(self):
+        return ACL % {
+                  'owner_id': self.owner.id_,
+                  'grants': self.grants_str
+               }
+    
+class GSAclGrant(S3AclGrant):
+    'Base Google cloud storage acl grant. refer to https://developers.google.com/storage/docs/accesscontrol'
+
+class GSAclGrantByUserID(GSAclGrant):
+    '''
+    Google cloud storage acl grant, need the user's canonical id.
+    permission value can be  FULL_CONTROL | WRITE |  READ.
+    '''
+    
+    def __init__(self, gs_user, permission):
+        assert isinstance(gs_user, GSUser)
+        
+        self.user = gs_user
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_USER_ID % {
+                    'user_id': self.amazon_user.id_,
+                    'user_permission': permission
+               }
+        
+class GSAclGrantByUserEmail(S3AclGrantByEmail):
+    '''
+    Google cloud storage acl grant, need the user's email address.
+    permission value can be  FULL_CONTROL | WRITE | READ
+    '''
+    def _get_grant(self, permission):
+        return GRANT_BY_USER_EMAIL % {
+                    'user_email': self.email,
+                    'user_permission': permission
+               }
+    
+class GSAclGrantByGroupID(GSAclGrant):
+    '''
+    Google cloud storage acl grant, need the group's id.
+    permission value can be  FULL_CONTROL | WRITE | READ
+    '''
+    
+    def __init__(self, group_id, permission):
+        self.group_id = group_id
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_GROUP_ID % {
+                    'group_id': self.group_id,
+                    'user_permission': permission
+               }
+        
+class GSAclGrantByGroupEmail(GSAclGrant):
+    '''
+    Google cloud storage acl grant, need the group's email address.
+    permission value can be  FULL_CONTROL | WRITE | READ
+    '''
+    
+    def __init__(self, group_email, permission):
+        self.group_email = group_email
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_GROUP_EMAIL % {
+                    'group_email': self.group_email,
+                    'user_permission': permission
+               }
+        
+class GSAclGrantByAllUsers(GSAclGrant):
+    '''
+    Google cloud storage acl grant for all users.
+    permission value can be  FULL_CONTROL | WRITE | READ
+    '''
+    
+    def __init__(self, permission):
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_ALL_USERS % {
+                    'user_permission': permission
+               }
+        
+class GSAclGrantByAllAuthenticatedUsers(GSAclGrant):
+    '''
+    Google cloud storage acl grant for all users.
+    permission value can be  FULL_CONTROL | WRITE | READ
+    '''
+    
+    def __init__(self, permission):
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_ALL_AUTHENTICATED_USERS % {
+                    'user_permission': permission
+               }
 
 class GSBucket(S3Bucket):
     '''
@@ -42,18 +214,41 @@ class GSUser(AmazonUser):
     '''
     The Google cloud storage user.
     '''
-    mapping = {'id_': 'ID',
-               'uri': 'URI'}
+    mapping = {'id_': 'ID'}
+    
+    def __init__(self, id_=None, uri=None):
+        self.id_ = id_
+        
+    def __eq__(self, other_user):
+        return self.id_ == other_user.id_
+            
+    def __hash__(self):
+        return hash(self.id_)
+            
+    def __str__(self):
+        return self.id_
     
 class GSRequest(S3Request):
     def __init__(self, access_key, secret_access_key, project_id, action, 
                  bucket_name=None, obj_name=None,
                  data=None, content_type=None, metadata={}, goog_headers={} ):
         
-        super(GSRequest, self).__init__(access_key, secret_access_key, 
-                 action, bucket_name=bucket_name, obj_name=obj_name,
-                 data=data, content_type=content_type, metadata=metadata)
-        del self.amz_headers
+        assert action in ACTION_TYPES # action must be PUT, GET and DELETE.
+        
+        self.access_key = access_key
+        self.secret_key = secret_access_key
+        self.action = action
+        
+        self.bucket_name = bucket_name
+        self.obj_name = obj_name
+        self.data = data
+        
+        self.content_type = content_type
+        self._set_content_type()
+        
+        self.metadata = metadata
+        
+        self.date_str = self._get_date_str()
         
         self.project_id = project_id
         self.goog_headers = goog_headers
@@ -90,6 +285,8 @@ class GSRequest(S3Request):
         if self.data:
             headers['Content-Length'] = len(self.data)
             headers['Content-MD5'] = calc_md5(self.data)
+        else:
+            headers['Content-Length'] = 0
             
         if self.content_type is not None:
             headers['Content-Type'] = self.content_type
@@ -148,7 +345,7 @@ class GSClient(object):
     def get_service(self):
         '''
         List all the buckets.
-        In Amazon S3, bucket's name must be unique.
+        In Google Cloud Storage, bucket's name must be unique.
         Files can be uploaded into a bucket.
         
         :return 0: owner of the bucket, instance of AmazonUser.
@@ -158,4 +355,61 @@ class GSClient(object):
         req = GSRequest(self.access_key, self.secret_key, self.project_id, 'GET')
         return req.submit(callback=self._parse_get_service)
     
+    def put_bucket(self, bucket_name, x_goog_acl=X_GOOG_ACL.private, owner=None, *grants):
+        '''
+        Create a bucket.
+        
+        :param bucket_name: the name of the bucket.
+        :param x_goog_acl: the acl of the bucket.
+        
+        As default, x_amz_acl is private. It can be:
+        private
+        public-read
+        public-read-write 
+        authenticated-read
+        bucket-owner-read 
+        bucket-owner-full-control
+        You can refer to the document here:
+        https://developers.google.com/storage/docs/reference-headers#xgoogacl
+        
+        The properties of X_GOOG_ACL stand for acl list above, X_GOOG_ACL.private eg.
+        But notice that the '-' must be replaced with '_', X_GOOG_ACL.public_read eg.
+        '''
+        
+        goog_headers = {}
+        if x_goog_acl != X_GOOG_ACL.private:
+            goog_headers['acl'] = x_goog_acl
+            
+        if owner and grants:
+            acl = str(GSACL(owner, *grants))
+        
+            req = GSRequest(self.access_key, self.secret_key, self.project_id, 'PUT',
+                            bucket_name=bucket_name, obj_name='?acl', data=acl)
+            return req.submit()
+        
+        req = GSRequest(self.access_key, self.secret_key, self.project_id, 'PUT', 
+                        bucket_name=bucket_name, goog_headers=goog_headers)
+        
+        return req.submit()
+    
+    def get_bucket(self):
+        pass
+    
+    def delete_bucket(self):
+        pass
+    
+    def get_object(self):
+        pass
+    
+    def post_object(self):
+        pass
+    
+    def put_object(self):
+        pass
+    
+    def head_object(self):
+        pass
+    
+    def delete_object(self):
+        pass
     

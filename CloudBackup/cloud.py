@@ -455,6 +455,6 @@ class S3Storage(Storage):
             grant = S3AclGrantByURI(ALL_USERS_URI, ACL_PERMISSION.read)
             self.client.put_object_acl(self.holder, cloud_path, owner, grant)
             
-            return get_end_point(self.holder, cloud_path)
+            return get_end_point(self.holder, cloud_path, True)
         else:
             raise S3Error(-1, msg='share need S3Client set owner.')
