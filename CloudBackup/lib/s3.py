@@ -17,8 +17,7 @@ from crypto import DES
 
 __author__ = "Chine King"
 __description__ = "A client for Amazon S3 api, site: http://aws.amazon.com/documentation/s3/"
-__all__ = ['get_end_point', 'STRING_TO_SIGN',
-           'X_AMZ_ACL', 'REGION', 'ACL_PERMISSION', 'ALL_USERS_URI',
+__all__ = ['get_end_point', 'X_AMZ_ACL', 'REGION', 'ACL_PERMISSION', 'ALL_USERS_URI',
            'S3AclGrantByPersonID', 'S3AclGrantByEmail', 'S3AclGrantByURI',
            'S3Bucket', 'S3Object', 'AmazonUser', 'S3Client', 'CryptoS3Client']
 
@@ -189,7 +188,7 @@ class S3Bucket(S3Base):
     
     @classmethod    
     def from_xml(cls, tree):
-        bucket = S3Bucket()
+        bucket = cls()
         
         for k, v in cls.mapping.iteritems():
             tag = tree.find(v)
@@ -217,7 +216,7 @@ class S3Object(S3Base):
     
     @classmethod    
     def from_xml(cls, tree):
-        obj = S3Object()
+        obj = cls()
         
         for k, v in cls.mapping.iteritems():
             tag = tree.find(v)
@@ -254,7 +253,7 @@ class AmazonUser(object):
         
     @classmethod
     def from_xml(cls, tree):
-        user = AmazonUser()
+        user = cls()
         
         for k, v in cls.mapping.iteritems():
             tag = tree.find(v)
@@ -370,7 +369,7 @@ class S3Request(object):
                 return resp.read()
             except urllib2.HTTPError, e:
                 tree = XML.loads(e.read())
-                raise S3Error(tree, e.code)
+                raise S3Error(e.code, tree)
             
         for i in range(try_times):
             try:
@@ -727,14 +726,14 @@ class CryptoS3Client(S3Client):
         
     def upload_file(self, filename, bucket_name, obj_name, x_amz_acl=X_AMZ_ACL.private, encrypt=True):
         if not hasattr(self, 'IV'):
-            raise S3Error(None, -1, 'You haven\'t set the IV(8 length)')
+            raise S3Error(-1, msg='You haven\'t set the IV(8 length)')
         
         super(CryptoS3Client, self).upload_file(filename, bucket_name, obj_name, x_amz_acl,
                                                 encrypt, self.des.encrypt)
         
     def download_file(self, filename, bucket_name, obj_name, decrypt=True):
         if not hasattr(self, 'IV'):
-            raise S3Error(None, -1, 'You haven\'t set the IV(8 length)')
+            raise S3Error(-1, msg='You haven\'t set the IV(8 length)')
         
         super(CryptoS3Client, self).download_file(filename, bucket_name, obj_name,
                                                   decrypt, self.des.decrypt)

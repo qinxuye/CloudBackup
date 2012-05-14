@@ -457,4 +457,4 @@ class S3Storage(Storage):
             
             return get_end_point(self.holder, cloud_path)
         else:
-            raise S3Error(None, -1, 'share need S3Client set owner.')
+            raise S3Error(-1, msg='share need S3Client set owner.')

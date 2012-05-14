@@ -46,12 +46,12 @@ class S3Error(CloudBackupLibError):
     Amazon S3 error
     '''
     
-    def __init__(self, tree, status, msg=None):
+    def __init__(self, status, tree=None, msg=None):
         self.src = 's3'
         self.err_no = status
-        self.tree = tree
         
         if tree:
+            self.tree = tree
             self._parse()
         elif msg:
             self.msg = msg
@@ -67,3 +67,12 @@ class S3Error(CloudBackupLibError):
                     self.msg = tag.text
                 else:
                     setattr(self, tag_name.lower(), tag.text)
+                    
+class GSError(S3Error):
+    '''
+    Google Cloud Storage error.
+    '''
+    
+    def __init__(self, status, tree=None, msg=None):
+        super(GSError, self).__init__(status, tree, msg)
+        self.src = 'Google Cloud Storage'
