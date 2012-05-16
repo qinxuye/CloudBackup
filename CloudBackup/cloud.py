@@ -8,7 +8,7 @@ Created on 2012-5-1
 
 from CloudBackup.lib.vdisk import VdiskClient
 from CloudBackup.lib.s3 import (S3Client, get_end_point,ALL_USERS_URI, 
-                                ACL_PERMISSION, S3AclGrantByURI)
+                                ACL_PERMISSION, S3AclGrantByURI, S3AclGrantByPersonID)
 from CloudBackup.lib.errors import VdiskError, S3Error
 from CloudBackup.utils import join_path
 
@@ -462,8 +462,9 @@ class S3Storage(Storage):
         
         if hasattr(self.client, 'owner'):
             owner = self.client.owner
-            grant = S3AclGrantByURI(ALL_USERS_URI, ACL_PERMISSION.read)
-            self.client.put_object_acl(self.holder, cloud_path, owner, grant)
+            all_user_grant = S3AclGrantByURI(ALL_USERS_URI, ACL_PERMISSION.read)
+            owner_grant = S3AclGrantByPersonID(owner, ACL_PERMISSION.full_control)
+            self.client.put_object_acl(self.holder, cloud_path, owner, all_user_grant, owner_grant)
             
             return get_end_point(self.holder, cloud_path, True)
         else:

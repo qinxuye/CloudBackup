@@ -130,8 +130,8 @@ class S3AclGrantByPersonID(S3AclGrant):
         
     def _get_grant(self, permission):
         return GRANT_BY_PERSON_ID % {
-                    'user_id': self.amazon_user.id_,
-                    'user_display_name': self.amazon_user.display_name,
+                    'user_id': self.user.id_,
+                    'user_display_name': self.user.display_name,
                     'user_permission': permission
                }
         
