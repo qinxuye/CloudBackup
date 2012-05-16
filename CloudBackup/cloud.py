@@ -340,6 +340,12 @@ class S3Storage(Storage):
         self.client.delete_object(self.holder, cloud_path)
         for obj in self.list_files(cloud_path, recursive=True):
             self.client.delete_object(self.holder, obj.path)
+            
+    def _get_cloud_file(self, s3_obj):
+        content_type = getattr(s3_obj, 'content_type', '')
+        md5 = s3_obj.etag.strip('"')
+        
+        return CloudFile(s3_obj.key, content_type, md5)
     
     def list(self, cloud_path, recursive=False):
         '''
@@ -357,35 +363,32 @@ class S3Storage(Storage):
         '''
         
         cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        prefix = '' if not cloud_path else cloud_path+'/'
         
-        folders = []
-        for obj in self.client.get_bucket(self.holder):
-            name = obj.key
+        objs, common_prefix, has_next = self.client.get_bucket(self.holder,
+                                                               prefix=prefix,
+                                                               delimiter='/')
+        
+        for obj in objs:
+            yield self._get_cloud_file(obj)
             
-            splits = name.split('/')[:-1]
-            tmp_path = ''
-            for s in splits:
-                tmp_path += s
-                if tmp_path.startswith(cloud_path) \
-                    and tmp_path != cloud_path \
-                    and tmp_path not in folders:
-                    
-                    folders.append(tmp_path)
-                    yield CloudFolder(tmp_path)
-                    
-                if not recursive:
-                    break
+        while has_next:
+            marker = objs[-1].key
+            objs, common_prefix, has_next = self.client.get_bucket(self.holder,
+                                                                   prefix=prefix,
+                                                                   delimiter='/',
+                                                                   marker=marker)
+            for obj in objs:
+                yield self._get_cloud_file(obj)
                 
-                tmp_path += '/'
-                
-            if name.startswith(cloud_path):
-                if not recursive and '/' in name.lstrip(cloud_path+'/'):
-                    continue
-                else:
-                    content_type = getattr(obj, 'content_type', '')
-                    md5 = obj.etag.strip('"')
-                    yield CloudFile(name, content_type, md5)
+        for prefix in common_prefix:
+            yield CloudFolder(self._ensure_cloud_path_legal(prefix))
             
+        if recursive:
+            for prefix in common_prefix:
+                for obj in self.list(prefix, recursive):
+                    yield obj
+        
     def list_files(self, cloud_path, recursive=False):
         '''
         List all the files in a cloud path.
@@ -402,16 +405,23 @@ class S3Storage(Storage):
         '''
         
         cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        prefix = '' if not cloud_path else cloud_path+'/'
         
-        for obj in self.client.get_bucket(self.holder):
-            name = obj.key
-            if name.startswith(cloud_path):
-                if not recursive and '/' in name.lstrip(cloud_path+'/'):
-                    continue
-                else:
-                    content_type = getattr(obj, 'content_type', '')
-                    md5 = obj.etag.strip('"')
-                    yield CloudFile(name, content_type, md5)
+        kwargs = {'prefix': prefix}
+        if not recursive:
+            kwargs['delimiter'] = '/'
+        
+        objs, _, has_next = self.client.get_bucket(self.holder, **kwargs)
+        
+        for obj in objs:
+            yield self._get_cloud_file(obj)
+            
+        while has_next:
+            marker = objs[-1].key
+            kwargs['marker'] = marker
+            objs, _, has_next = self.client.get_bucket(self.holder, **kwargs)
+            for obj in objs:
+                yield self._get_cloud_file(obj)
     
     def info(self, cloud_path):
         '''

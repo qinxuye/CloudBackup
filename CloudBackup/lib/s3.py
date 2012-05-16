@@ -304,7 +304,10 @@ class S3Request(object):
         if self.bucket_name and self.obj_name:
             if not self.obj_name.startswith('/'):
                 path += '/'
-            path += self.obj_name
+            if not ('?' in self.obj_name and '=' in self.obj_name):
+                # it seems that ?prefix='sth/'&delimiter='/' and so on cannot be added here.
+                # but ?acl is ok
+                path += self.obj_name
         elif self.bucket_name and not path.endswith('/'):
             path += '/'
             
@@ -498,6 +501,7 @@ class S3Client(object):
     def _parse_get_bucket(self, data):
         tree = XML.loads(data)
         bucket = S3Bucket.from_xml(tree)
+        has_next = True if bucket.is_truncated == 'true' else False
         
         objs = []
         for ele in tree.findall('Contents'):
@@ -505,7 +509,13 @@ class S3Client(object):
             obj.bucket = bucket
             objs.append(obj)
             
-        return objs
+        common_prefix = []
+        for ele in tree.findall('CommonPrefixes'):
+            prefix = ele.find('Prefix')
+            if hasattr(prefix, 'text'):
+                common_prefix.append(prefix.text)
+            
+        return objs, common_prefix, has_next
     
     def get_bucket(self, bucket_name, **kwargs):
         '''
@@ -513,7 +523,9 @@ class S3Client(object):
         
         :param bucket_name
         
-        :return: list of objects in the bucket, each one is an instance of S3Object.
+        :return 0: list of objects in the bucket, each one is an instance of S3Object.
+        :return 1: the common prefix list, always when prefix parameter in kwargs.
+        :return 2: if has next objects.
         '''
         args = {}
         for k in ('delimiter', 'marker', 'prefix'):
@@ -531,7 +543,7 @@ class S3Client(object):
             param = '?' + param
         
         req = S3Request(self.access_key, self.secret_key, 'GET',
-                        bucket_name=bucket_name)
+                        bucket_name=bucket_name, obj_name=param)
         return req.submit(callback=self._parse_get_bucket)
     
     def _parse_get_acl(self, data):
