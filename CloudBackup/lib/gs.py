@@ -357,10 +357,15 @@ class GSClient(object):
     
     def put_bucket(self, bucket_name, x_goog_acl=X_GOOG_ACL.private, owner=None, *grants):
         '''
-        Create a bucket.
+        Create a bucket. if owner and grants, set bucket's acl.
         
         :param bucket_name: the name of the bucket.
         :param x_goog_acl: the acl of the bucket.
+        :param owner(optional): an instance of GSUser, the owner of the bucket.
+        :param *grants(optional): each of which is an instance of GSAclGrant, 
+                        or its subclass: GSAclGrantByUserID, GSAclGrantByUserEmail, 
+                        GSAclGrantByGroupID, GSAclGrantByGroupEmail,
+                        GSAclGrantByAllUsers, GSAclGrantByAllAuthenticatedUsers.
         
         As default, x_amz_acl is private. It can be:
         private

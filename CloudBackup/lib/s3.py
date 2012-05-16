@@ -507,7 +507,7 @@ class S3Client(object):
             
         return objs
     
-    def get_bucket(self, bucket_name):
+    def get_bucket(self, bucket_name, **kwargs):
         '''
         List objects in the bucket by the bucket's name.
         
@@ -515,6 +515,20 @@ class S3Client(object):
         
         :return: list of objects in the bucket, each one is an instance of S3Object.
         '''
+        args = {}
+        for k in ('delimiter', 'marker', 'prefix'):
+            v = kwargs.pop(k, None)
+            if v:
+                args[k] = v
+        max_keys = kwargs.pop('max_keys', 1000)
+        if max_keys != 1000:
+            args['max-keys'] = max_keys
+        
+        param = '&'.join(('%s=%s' % (k, v) for k, v in args.iteritems()))
+        if not param:
+            param = None
+        else:
+            param = '?' + param
         
         req = S3Request(self.access_key, self.secret_key, 'GET',
                         bucket_name=bucket_name)
