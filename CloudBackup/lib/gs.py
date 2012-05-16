@@ -120,7 +120,7 @@ class GSAclGrant(S3AclGrant):
         if scope_type == 'UserById':
             id_ = scope.find('ID')
             if hasattr(id_, 'text'):
-                return GSAclGrantByUserID(id_.text, permission)
+                return GSAclGrantByUserID(GSUser(id_.text), permission)
         elif scope_type == 'UserByEmail':
             email = scope.find('EmailAddress')
             if hasattr(email, 'text'):
@@ -156,7 +156,7 @@ class GSAclGrantByUserID(GSAclGrant):
         
     def _get_grant(self, permission):
         return GRANT_BY_USER_ID % {
-                    'user_id': self.amazon_user.id_,
+                    'user_id': self.user.id_,
                     'user_permission': permission
                }
         
@@ -445,7 +445,6 @@ class GSClient(object):
         return req.submit()
     
     def _parse_get_acl(self, data):
-        print data
         tree = XML.loads(data)
         
         owner = GSUser.from_xml(tree.find('Owner'))
@@ -528,8 +527,15 @@ class GSClient(object):
                         bucket_name=bucket_name)
         return req.submit()
     
-    def get_object(self):
-        pass
+    def get_object(self, bucket_name, obj_name, acl=False):
+        if acl:
+            req = GSRequest(self.access_key, self.secret_key, self.project_id, 'GET',
+                            bucket_name=bucket_name, obj_name=obj_name+"?acl")
+            return req.submit(callback=self._parse_get_acl)
+        
+        req = GSRequest(self.access_key, self.secret_key, self.project_id, 'GET',
+                        bucket_name=bucket_name, obj_name=obj_name)
+        return req.submit(include_headers=True, callback=lambda data, headers: GSObject(data=data, **headers))
     
     def post_object(self):
         pass
