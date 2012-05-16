@@ -397,11 +397,93 @@ class GSClient(object):
         
         return req.submit()
     
-    def get_bucket(self):
-        pass
+    def _parse_get_acl(self, data):
+        tree = XML.loads(data)
+        
+        owner = GSUser.from_xml(tree.find('Owner'))
+        
+        grants = {}
+        for grant in tree.findall('AccessControlList/Entries'):
+            user = GSUser.from_xml(grant.find('Entry'))
+            permission = grant.find('Permission').text
+            
+            if user not in grants:
+                grants[user] = [permission]
+            else:
+                if permission not in grants[user]:
+                    grants[user].append(permission)
+               
+        return owner, grants
     
-    def delete_bucket(self):
-        pass
+    def _parse_get_bucket(self, data):
+        tree = XML.loads(data)
+        bucket = GSBucket.from_xml(tree)
+        has_next = True if bucket.is_truncated == 'true' else False
+        
+        objs = []
+        for ele in tree.findall('Contents'):
+            obj = GSObject.from_xml(ele)
+            obj.bucket = bucket
+            objs.append(obj)
+            
+        common_prefix = []
+        for ele in tree.findall('CommonPrefixes'):
+            prefix = ele.find('Prefix')
+            if hasattr(prefix, 'text'):
+                common_prefix.append(prefix.text)
+            
+        return objs, common_prefix, has_next
+    
+    def get_bucket(self, bucket_name, acl=False, **kwargs):
+        '''
+        If not acl, list objects in the bucket by the bucket's name.
+        
+        :param bucket_name
+        
+        :return 0: list of objects in the bucket, each one is an instance of GSObject.
+        :return 1: the common prefix list, always when prefix parameter in kwargs.
+        :return 2: if has next objects.
+        
+        Else if acl, get buckt's acl.
+        
+        :param bucket_name
+        
+        :return 0: the owner of the buckt, an instance of GSUser.
+        :return 1: a dict. key is an instance of GSUser, value is the permission of this user.
+                   permission value can be  FULL_CONTROL | WRITE | WRITE_ACP | READ | READ_ACP
+        '''
+        
+        if acl:
+            req = GSRequest(self.access_key, self.secret_key, self.project_id, 'GET',
+                            bucket_name=bucket_name, obj_name='?acl')
+            return req.submit(callback=self._parse_get_acl)
+        
+        args = {}
+        for k in ('delimiter', 'marker', 'prefix', 'max_keys'):
+            v = kwargs.pop(k, None)
+            if v:
+                args[k] = v
+        
+        param = '&'.join(('%s=%s' % (k, v) for k, v in args.iteritems()))
+        if not param:
+            param = None
+        else:
+            param = '?' + param
+        
+        req = GSRequest(self.access_key, self.secret_key, self.project_id, 'GET',
+                        bucket_name=bucket_name, obj_name=param)
+        return req.submit(callback=self._parse_get_bucket)
+    
+    def delete_bucket(self, bucket_name):
+        '''
+        Delete the bucket by it's name.
+        
+        :param bucket_name
+        '''
+        
+        req = GSRequest(self.access_key, self.secret_key, self.project_id, 'DELETE',
+                        bucket_name=bucket_name)
+        return req.submit()
     
     def get_object(self):
         pass
