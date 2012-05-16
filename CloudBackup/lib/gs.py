@@ -110,7 +110,38 @@ class GSACL(S3ACL):
     
 class GSAclGrant(S3AclGrant):
     'Base Google cloud storage acl grant. refer to https://developers.google.com/storage/docs/accesscontrol'
-
+    
+    @classmethod
+    def from_xml(cls, tree):
+        scope = tree.find('Scope')
+        scope_type = scope.attrib['type']
+        permission = tree.find('Permission').text
+        
+        if scope_type == 'UserById':
+            id_ = scope.find('ID')
+            if hasattr(id_, 'text'):
+                return GSAclGrantByUserID(id_.text, permission)
+        elif scope_type == 'UserByEmail':
+            email = scope.find('EmailAddress')
+            if hasattr(email, 'text'):
+                return GSAclGrantByUserEmail(email.text, permission)
+        elif scope_type == 'GroupById':
+            id_ = scope.find('ID')
+            if hasattr(id_, 'text'):
+                return GSAclGrantByGroupID(id_.text, permission)
+        elif scope_type == 'GroupByEmail':
+            email = scope.find('EmailAddress')
+            if hasattr(email, 'text'):
+                return GSAclGrantByGroupEmail(email.text, permission)
+        elif scope_type == 'GroupByDomain':
+            domain = scope.find('Domain')
+            if hasattr(domain, 'text'):
+                return GSAclGrantByGroupDomain(domain.text, permission)
+        elif scope_type == 'AllUsers':
+            return GSAclGrantByAllUsers(permission)
+        elif scope_type == 'AllAuthenticatedUsers':
+            return GSAclGrantByAllAuthenticatedUsers(permission)
+    
 class GSAclGrantByUserID(GSAclGrant):
     '''
     Google cloud storage acl grant, need the user's canonical id.
@@ -169,6 +200,22 @@ class GSAclGrantByGroupEmail(GSAclGrant):
     def _get_grant(self, permission):
         return GRANT_BY_GROUP_EMAIL % {
                     'group_email': self.group_email,
+                    'user_permission': permission
+               }
+        
+class GSAclGrantByGroupDomain(GSAclGrant):
+    '''
+    Google cloud storage acl grant, need the group's email address.
+    permission value can be  FULL_CONTROL | WRITE | READ
+    '''
+    
+    def __init__(self, group_domain, permission):
+        self.group_domain = group_domain
+        self.permission = permission
+        
+    def _get_grant(self, permission):
+        return GRANT_BY_GROUP_DOMAIN % {
+                    'group_domain': self.group_domain,
                     'user_permission': permission
                }
         
@@ -398,20 +445,14 @@ class GSClient(object):
         return req.submit()
     
     def _parse_get_acl(self, data):
+        print data
         tree = XML.loads(data)
         
         owner = GSUser.from_xml(tree.find('Owner'))
         
-        grants = {}
-        for grant in tree.findall('AccessControlList/Entries'):
-            user = GSUser.from_xml(grant.find('Entry'))
-            permission = grant.find('Permission').text
-            
-            if user not in grants:
-                grants[user] = [permission]
-            else:
-                if permission not in grants[user]:
-                    grants[user].append(permission)
+        grants = []
+        for entry in tree.find('Entries').getchildren():
+            grants.append(GSAclGrant.from_xml(entry))
                
         return owner, grants
     
@@ -449,8 +490,10 @@ class GSClient(object):
         :param bucket_name
         
         :return 0: the owner of the buckt, an instance of GSUser.
-        :return 1: a dict. key is an instance of GSUser, value is the permission of this user.
-                   permission value can be  FULL_CONTROL | WRITE | WRITE_ACP | READ | READ_ACP
+        :return 1: a list. each one is an isntance of GSAclGrant or its subclass.
+                   including: GSAclGrantByUserID, GSAclGrantByUserEmail, 
+                   GSAclGrantByGroupID, GSAclGrantByGroupEmail,
+                   GSAclGrantByAllUsers, GSAclGrantByAllAuthenticatedUsers.
         '''
         
         if acl:
