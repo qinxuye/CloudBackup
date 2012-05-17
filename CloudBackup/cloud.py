@@ -8,8 +8,10 @@ Created on 2012-5-1
 
 from CloudBackup.lib.vdisk import VdiskClient
 from CloudBackup.lib.s3 import (S3Client, get_end_point,ALL_USERS_URI, 
-                                ACL_PERMISSION, S3AclGrantByURI, S3AclGrantByPersonID)
-from CloudBackup.lib.gs import GSClient
+                                ACL_PERMISSION as S3_ACL_PERMISSION, 
+                                S3AclGrantByURI, S3AclGrantByPersonID)
+from CloudBackup.lib.gs import (GSClient, GSAclGrantByAllUsers,
+                                ACL_PERMISSION as GS_ACL_PERMISSION)
 from CloudBackup.lib.errors import VdiskError, S3Error
 from CloudBackup.utils import join_path
 
@@ -463,13 +465,15 @@ class S3Storage(Storage):
         
         if hasattr(self.client, 'owner'):
             owner = self.client.owner
-            all_user_grant = S3AclGrantByURI(ALL_USERS_URI, ACL_PERMISSION.read)
-            owner_grant = S3AclGrantByPersonID(owner, ACL_PERMISSION.full_control)
-            self.client.put_object_acl(self.holder, cloud_path, owner, all_user_grant, owner_grant)
-            
-            return get_end_point(self.holder, cloud_path, True)
         else:
-            raise S3Error(-1, msg='share need S3Client set owner.')
+            owner = self.client.get_object_acl(self.holder, cloud_path)[0]
+            self.client.set_owner(owner)
+        
+        all_user_grant = S3AclGrantByURI(ALL_USERS_URI, S3_ACL_PERMISSION.read)
+        owner_grant = S3AclGrantByPersonID(owner, S3_ACL_PERMISSION.full_control)
+        self.client.put_object_acl(self.holder, cloud_path, owner, all_user_grant, owner_grant)
+        
+        return get_end_point(self.holder, cloud_path, True)
         
 class GSStorage(S3Storage):
     def __init__(self, client, holder_name):
@@ -497,4 +501,21 @@ class GSStorage(S3Storage):
         self.put_bucket(holder_name)
     
     def share(self, cloud_path):
-        pass
+        '''
+        Share a file on the cloud.
+        
+        param cloud_path: the path on the cloud, 'test/file.txt' eg, not need to start with '/'.
+        
+        :return: the path to download.
+        '''
+        
+        cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        
+        if hasattr(self.client, 'owner'):
+            owner = self.client.owner
+        else:
+            owner = self.client.get_object(self.holder, cloud_path, acl=True)[0]
+            self.client.set_owner(owner)
+        
+        grant = GSAclGrantByAllUsers(GS_ACL_PERMISSION.read)
+        self.client.put_object(self.holder, cloud_path, owner=owner, grants=(grant, ))

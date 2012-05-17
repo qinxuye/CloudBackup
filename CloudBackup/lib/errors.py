@@ -60,7 +60,7 @@ class S3Error(CloudBackupLibError):
         if not tree:
             tree = self.tree
         
-        for tag_name in ('Code', 'Message', 'RequestId', 'Resource'):
+        for tag_name in ('Code', 'Message', 'RequestId', 'Resource', 'Details'):
             tag = tree.find(tag_name)
             if hasattr(tag, 'text'):
                 if tag_name == 'Message':

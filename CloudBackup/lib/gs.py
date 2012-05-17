@@ -372,13 +372,16 @@ class GSClient(object):
     '''
     
     def __init__(self, access_key, secret_access_key, project_id,
-                 canonical_user_id=None, user_display_name=None):
+                 canonical_user_id=None):
         self.access_key = access_key
         self.secret_key = secret_access_key
         self.project_id = project_id
         
-        if canonical_user_id and user_display_name:
-            self.owner = GSUser(canonical_user_id, user_display_name)
+        if canonical_user_id:
+            self.owner = GSUser(canonical_user_id)
+            
+    def set_owner(self, owner):
+        self.owner = owner
             
     def _parse_get_service(self, data):
         tree = XML.loads(data)
@@ -403,7 +406,7 @@ class GSClient(object):
         req = GSRequest(self.access_key, self.secret_key, self.project_id, 'GET')
         return req.submit(callback=self._parse_get_service)
     
-    def put_bucket(self, bucket_name, x_goog_acl=X_GOOG_ACL.private, owner=None, *grants):
+    def put_bucket(self, bucket_name, x_goog_acl=X_GOOG_ACL.private, owner=None, grants=None):
         '''
         Create a bucket. if owner and grants, set bucket's acl.
         
@@ -559,10 +562,9 @@ class GSClient(object):
                    content_type=None, metadata={}, goog_headers={}, owner=None, grants=None):
         if owner and grants and not data:
             acl = str(GSACL(owner, *grants))
-        
+            
             req = GSRequest(self.access_key, self.secret_key, self.project_id, 'PUT',
-                            bucket_name=bucket_name, obj_name=obj_name+'?acl', data=acl,
-                            content_type='application/xml; charset=UTF-8')
+                            bucket_name=bucket_name, obj_name=obj_name+'?acl', data=acl)
             return req.submit()
         
         if x_goog_acl != X_GOOG_ACL.private:
@@ -640,7 +642,7 @@ class GSClient(object):
     def download_file(self, filename, bucket_name, obj_name, 
                       decrypt=False, decrypt_func=None):
         '''
-        Download the object in Amazon S3 to the local file.
+        Download the object in Google Cloud Storage to the local file.
         
         :param filename: the absolute path of the local file.
         :param bucket_name: name of the bucket which file puts into.
