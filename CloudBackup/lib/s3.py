@@ -371,6 +371,7 @@ class S3Request(object):
                     return resp.read(), resp.headers.dict
                 return resp.read()
             except urllib2.HTTPError, e:
+                print e.read()
                 tree = XML.loads(e.read())
                 raise S3Error(e.code, tree)
             

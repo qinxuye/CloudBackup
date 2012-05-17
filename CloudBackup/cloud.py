@@ -25,6 +25,9 @@ class Storage(object):
     def set_holder(self, holder_name):
         raise NotImplementedError
     
+    def _ensure_holder_exist(self, holder_name):
+        raise NotImplementedError
+    
     def upload(self, cloud_path, filename):
         raise NotImplementedError
     
@@ -74,8 +77,15 @@ class VdiskStorage(Storage):
         self.client = client
         self.holder = holder_name
         
+        if self.holder:
+            self._ensure_holder_exist(self.holder)
+        
     def set_holder(self, holder_name):
         self.holder = holder_name
+        self._ensure_holder_exist(self.holder)
+        
+    def _ensure_holder_exist(self, holder_name):
+        self._get_cloud_dir_id(self.holder, True)
         
     def _ensure_cloud_path_legal(self, cloud_path):
         path = join_path(self.holder, cloud_path)
@@ -222,6 +232,9 @@ class VdiskStorage(Storage):
                 
             for itm in result.list:
                 path = join_path(cloud_path, itm.name)
+                if self.holder:
+                    path = path.lstrip(self.holder+'/')
+                    
                 if 'url' in itm:
                     yield CloudFile(path, itm.type, itm.md5, id=itm.id)
                 else:
@@ -263,7 +276,10 @@ class VdiskStorage(Storage):
         
         fid = self._get_cloud_file_id(cloud_path)
         kwargs = dict(self.client.get_file_info(fid))
-        kwargs['path'] = cloud_path
+        if self.holder:
+            kwargs['path'] = cloud_path.lstrip(self.holder+'/')
+        else:
+            kwargs['path'] = cloud_path
         kwargs['content_type'] = kwargs.pop('type')
         return CloudFile(**kwargs)
     
@@ -304,7 +320,7 @@ class S3Storage(Storage):
             if bucket.name == holder_name:
                 return
             
-        self.put_bucket(holder_name)
+        self.client.put_bucket(holder_name)
         
     def set_holder(self, holder_name):
         self.holder = holder_name
@@ -499,7 +515,7 @@ class GSStorage(S3Storage):
             if bucket.name == holder_name:
                 return
             
-        self.put_bucket(holder_name)
+        self.client.put_bucket(holder_name)
     
     def share(self, cloud_path):
         '''
