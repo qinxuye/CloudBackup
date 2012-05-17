@@ -9,6 +9,7 @@ Created on 2012-5-1
 from CloudBackup.lib.vdisk import VdiskClient
 from CloudBackup.lib.s3 import (S3Client, get_end_point,ALL_USERS_URI, 
                                 ACL_PERMISSION, S3AclGrantByURI, S3AclGrantByPersonID)
+from CloudBackup.lib.gs import GSClient
 from CloudBackup.lib.errors import VdiskError, S3Error
 from CloudBackup.utils import join_path
 
@@ -469,3 +470,31 @@ class S3Storage(Storage):
             return get_end_point(self.holder, cloud_path, True)
         else:
             raise S3Error(-1, msg='share need S3Client set owner.')
+        
+class GSStorage(S3Storage):
+    def __init__(self, client, holder_name):
+        '''
+        :param client: must be S3Client or it's subclass, CryptoS3Client eg.
+        :param holder_name: the folder that holder the content.
+        
+        In Amazon S3, you can only store files into a bucket,
+        which means the holder here.
+        You have to define the holder with the unique name to store files.
+        '''
+        
+        assert isinstance(client, GSClient)
+        
+        self.client = client
+        self.holder = holder_name
+        
+        self._ensure_holder_exist(self.holder)
+        
+    def _ensure_holder_exist(self, holder_name):
+        for bucket in self.client.get_service()[1]:
+            if bucket.name == holder_name:
+                return
+            
+        self.put_bucket(holder_name)
+    
+    def share(self, cloud_path):
+        pass

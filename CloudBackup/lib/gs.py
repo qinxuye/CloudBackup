@@ -10,6 +10,7 @@ from s3 import (S3Bucket, S3Object, AmazonUser, S3Request,
                 S3ACL, S3AclGrant, S3AclGrantByEmail)
 from errors import S3Error, GSError
 from utils import hmac_sha1, calc_md5, XML
+from crypto import DES
 
 __author__ = "Chine King"
 __description__ = "A client for Google Cloud Storage api, site: https://developers.google.com/storage/"
@@ -528,6 +529,23 @@ class GSClient(object):
         return req.submit()
     
     def get_object(self, bucket_name, obj_name, acl=False):
+        '''
+        Get object.
+        
+        :param bucket_name: the bucket contains the object.
+        :param obj_name: the object's name, as the format: 'folder/file.txt' or 'file.txt'.
+        :param acl: if True, return the acl infomation of the object.
+        
+        if acl is not True
+        :return: return an instance of S3Object, the 'data' property is the content of the object.
+        else
+        :return 0: the owner of the buckt, an instance of GSUser.
+        :return 1: a list. each one is an isntance of GSAclGrant or its subclass.
+                   including: GSAclGrantByUserID, GSAclGrantByUserEmail, 
+                   GSAclGrantByGroupID, GSAclGrantByGroupEmail,
+                   GSAclGrantByAllUsers, GSAclGrantByAllAuthenticatedUsers.     
+        '''
+        
         if acl:
             req = GSRequest(self.access_key, self.secret_key, self.project_id, 'GET',
                             bucket_name=bucket_name, obj_name=obj_name+"?acl")
@@ -537,15 +555,141 @@ class GSClient(object):
                         bucket_name=bucket_name, obj_name=obj_name)
         return req.submit(include_headers=True, callback=lambda data, headers: GSObject(data=data, **headers))
     
-    def post_object(self):
-        pass
+    def put_object(self, bucket_name, obj_name, data=None, x_goog_acl=X_GOOG_ACL.private,
+                   content_type=None, metadata={}, goog_headers={}, owner=None, grants=None):
+        if owner and grants and not data:
+            acl = str(GSACL(owner, *grants))
+        
+            req = GSRequest(self.access_key, self.secret_key, self.project_id, 'PUT',
+                            bucket_name=bucket_name, obj_name=obj_name+'?acl', data=acl,
+                            content_type='application/xml; charset=UTF-8')
+            return req.submit()
+        
+        if x_goog_acl != X_GOOG_ACL.private:
+            goog_headers['acl'] = x_goog_acl
+        
+        req = GSRequest(self.access_key, self.secret_key, self.project_id, 'PUT',
+                        bucket_name=bucket_name, obj_name=obj_name, data=data,
+                        content_type=content_type, metadata=metadata, goog_headers=goog_headers)
+        return req.submit()
     
-    def put_object(self):
-        pass
+    def head_object(self, bucket_name, obj_name):
+        '''
+        List metadata of the object.
+        
+        :param bucket_name: the bucket contains the object.
+        :param obj_name: the object's name, as the format: 'folder/file.txt' or 'file.txt'.
+        
+        :return: an instance of GSObject.
+        '''
+        
+        req = GSRequest(self.access_key, self.secret_key, self.project_id, 'HEAD',
+                        bucket_name=bucket_name, obj_name=obj_name)
+        return req.submit(include_headers=True, callback=lambda data, headers: S3Object(**headers))
     
-    def head_object(self):
-        pass
+    def delete_object(self, bucket_name, obj_name):
+        '''
+        Delete object.
+        
+        :param bucket_name: the bucket contains the object.
+        :param obj_name: the object's name, as the format: 'folder/file.txt' or 'file.txt'.
+        '''
+        
+        req = GSRequest(self.access_key, self.secret_key, self.project_id, 'DELETE',
+                        bucket_name=bucket_name, obj_name=obj_name)
+        return req.submit()
     
-    def delete_object(self):
-        pass
+    def upload_file(self, filename, bucket_name, obj_name, x_goog_acl=X_GOOG_ACL.private,
+                    encrypt=False, encrypt_func=None):
+        '''
+        Upload a local file to the Amazon S3.
+        
+        :param filename: the absolute path of the local file.
+        :param bucket_name: name of the bucket which file puts into.
+        :param obj_name: the object's name, as the format: 'folder/file.txt' or 'file.txt'.
+        :param x_goog_acl: the acl of the file.
+        
+        As default, x_goog_acl is private. It can be:
+        private
+        public-read
+        public-read-write 
+        authenticated-read
+        bucket-owner-read 
+        bucket-owner-full-control
+        You can refer to the document here:
+        https://developers.google.com/storage/docs/reference-headers#xgoogacl
+        
+        The properties of X_GOOG_ACL stand for acl list above, X_GOOG_ACL.private eg.
+        But notice that the '-' must be replaced with '_', X_GOOG_ACL.public_read eg.
+        '''
+        
+        fp = open(filename, 'rb')
+        try:
+            goog_headers = {}
+            if x_goog_acl != X_GOOG_ACL.private:
+                goog_headers['acl'] = x_goog_acl
+                
+            data = fp.read()
+            if encrypt and encrypt_func is not None:
+                data = encrypt_func(data)
+                
+            self.put_object(bucket_name, obj_name, data=data, goog_headers=goog_headers)
+        finally:
+            fp.close()
+            
+    def download_file(self, filename, bucket_name, obj_name, 
+                      decrypt=False, decrypt_func=None):
+        '''
+        Download the object in Amazon S3 to the local file.
+        
+        :param filename: the absolute path of the local file.
+        :param bucket_name: name of the bucket which file puts into.
+        :param obj_name: the object's name, as the format: 'folder/file.txt' or 'file.txt'.
+        '''
+        
+        fp = open(filename, 'wb')
+        try:
+            data = self.get_object(bucket_name, obj_name).data
+            
+            if decrypt and decrypt_func is not None:
+                data = decrypt_func(data)
+            
+            fp.write(data)
+        finally:
+            fp.close()
     
+class CryptoGSClient(GSClient):
+    '''
+    Almost like GSClient, but supports uploading and downloading files with crypto.
+    
+    Usage:
+    # init, the third param's length must be 8
+    client = CryptoS3Client('your_access_key', 'your_secret_access_key', 'your_project_id', '12345678') 
+    
+    # call the Google Cloud Storage api
+    client.upload_file('/local_path/file_name', 'my_bucket_name', 'my_folder/file_name') 
+    ''' 
+    
+    def __init__(self, access_key, secret_access_key, project_id, IV):
+        self.IV = IV
+        self.des = DES(IV)
+        
+        super(CryptoGSClient, self).__init__(access_key, secret_access_key, project_id)
+    
+    def set_crypto(self, IV):
+        self.IV = IV
+        self.des = DES(IV)
+        
+    def upload_file(self, filename, bucket_name, obj_name, x_goog_acl=X_GOOG_ACL.private, encrypt=True):
+        if not hasattr(self, 'IV'):
+            raise GSError(-1, msg='You haven\'t set the IV(8 length)')
+        
+        super(CryptoGSClient, self).upload_file(filename, bucket_name, obj_name, x_goog_acl,
+                                                encrypt, self.des.encrypt)
+        
+    def download_file(self, filename, bucket_name, obj_name, decrypt=True):
+        if not hasattr(self, 'IV'):
+            raise S3Error(-1, msg='You haven\'t set the IV(8 length)')
+        
+        super(CryptoGSClient, self).download_file(filename, bucket_name, obj_name,
+                                                  decrypt, self.des.decrypt)
