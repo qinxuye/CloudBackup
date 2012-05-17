@@ -7,11 +7,12 @@ Created on 2012-5-1
 '''
 
 from CloudBackup.lib.vdisk import VdiskClient
-from CloudBackup.lib.s3 import (S3Client, get_end_point,ALL_USERS_URI, 
+from CloudBackup.lib.s3 import (S3Client, get_end_point as s3_get_end_point, ALL_USERS_URI, 
                                 ACL_PERMISSION as S3_ACL_PERMISSION, 
                                 S3AclGrantByURI, S3AclGrantByPersonID)
 from CloudBackup.lib.gs import (GSClient, GSAclGrantByAllUsers,
-                                ACL_PERMISSION as GS_ACL_PERMISSION)
+                                ACL_PERMISSION as GS_ACL_PERMISSION,
+                                get_end_point as gs_get_end_point)
 from CloudBackup.lib.errors import VdiskError, S3Error
 from CloudBackup.utils import join_path
 
@@ -473,7 +474,7 @@ class S3Storage(Storage):
         owner_grant = S3AclGrantByPersonID(owner, S3_ACL_PERMISSION.full_control)
         self.client.put_object_acl(self.holder, cloud_path, owner, all_user_grant, owner_grant)
         
-        return get_end_point(self.holder, cloud_path, True)
+        return s3_get_end_point(self.holder, cloud_path, True)
         
 class GSStorage(S3Storage):
     def __init__(self, client, holder_name):
@@ -519,3 +520,5 @@ class GSStorage(S3Storage):
         
         grant = GSAclGrantByAllUsers(GS_ACL_PERMISSION.read)
         self.client.put_object(self.holder, cloud_path, owner=owner, grants=(grant, ))
+        
+        return gs_get_end_point(self.holder, cloud_path, True)
