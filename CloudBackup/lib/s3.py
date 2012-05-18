@@ -307,6 +307,7 @@ class S3Request(object):
             if not ('?' in self.obj_name and '=' in self.obj_name):
                 # it seems that ?prefix='sth/'&delimiter='/' and so on cannot be added here.
                 # but ?acl is ok
+                
                 path += self.obj_name
         elif self.bucket_name and not path.endswith('/'):
             path += '/'
@@ -371,7 +372,6 @@ class S3Request(object):
                     return resp.read(), resp.headers.dict
                 return resp.read()
             except urllib2.HTTPError, e:
-                print e.read()
                 tree = XML.loads(e.read())
                 raise S3Error(e.code, tree)
             

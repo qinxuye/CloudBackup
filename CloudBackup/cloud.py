@@ -233,7 +233,7 @@ class VdiskStorage(Storage):
             for itm in result.list:
                 path = join_path(cloud_path, itm.name)
                 if self.holder:
-                    path = path.lstrip(self.holder+'/')
+                    path = path.split(self.holder+'/', 1)[1]
                     
                 if 'url' in itm:
                     yield CloudFile(path, itm.type, itm.md5, id=itm.id)
@@ -277,7 +277,7 @@ class VdiskStorage(Storage):
         fid = self._get_cloud_file_id(cloud_path)
         kwargs = dict(self.client.get_file_info(fid))
         if self.holder:
-            kwargs['path'] = cloud_path.lstrip(self.holder+'/')
+            kwargs['path'] = cloud_path.split(self.holder+'/', 1)[1]
         else:
             kwargs['path'] = cloud_path
         kwargs['content_type'] = kwargs.pop('type')
