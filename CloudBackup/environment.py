@@ -30,10 +30,13 @@ class Environment(object):
                             cls, *args, **kwargs)
         return cls.instance
     
-    def setup_vdisk(self, account, password, local_folder, holder,
-                     is_weibo=False, log=True, encrypt=False, encrypt_code=None):
-        if self.vdisk_handler:
+    def setup_vdisk(self, account, password, local_folder, holder, is_weibo=False, 
+                    log=True, encrypt=False, encrypt_code=None, force_stop=False):
+        if not force_stop and self.vdisk_handler:
             return self.vdisk_handler
+        
+        if force_stop and self.vdisk_handler:
+            self.vdisk_handler.stop()
         
         if encrypt and encrypt_code:
             client = CryptoVdiskClient(VDISK_APP_KEY, VDISK_APP_SECRET)
@@ -53,9 +56,12 @@ class Environment(object):
             raise CloudBackupError(e.src, e.err_no, e.msg)
         
     def setup_s3(self, access_key, secret_access_key, local_folder, holder,
-                 log=True, encrypt=False, encrypt_code=None):
+                 log=True, encrypt=False, encrypt_code=None, force_stop=False):
         if self.s3_handler:
             return self.s3_handler
+        
+        if force_stop and self.s3_handler:
+            self.s3_handler.stop()
         
         if encrypt and encrypt_code:
             client = CryptoS3Client(access_key, secret_access_key, encrypt_code)
@@ -73,9 +79,12 @@ class Environment(object):
             raise CloudBackupError(e.src, e.err_no, e.msg)
         
     def setup_gs(self, access_key, secret_access_key, project_id, local_folder, holder,
-                 log=True, encrypt=False, encrypt_code=None):
+                 log=True, encrypt=False, encrypt_code=None, force_stop=False):
         if self.gs_handler:
             return self.gs_handler
+        
+        if force_stop and self.gs_handler:
+            self.gs_handler.stop()
         
         if encrypt and encrypt_code:
             client = CryptoGSClient(access_key, secret_access_key, project_id, encrypt_code)

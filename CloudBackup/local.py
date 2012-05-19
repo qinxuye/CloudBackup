@@ -27,6 +27,8 @@ class FileEntry(object):
         self.md5 = md5
 
 class SyncHandler(threading.Thread):
+    stopped = False
+    
     def __init__(self, storage, folder_name, 
                  loop=True, sec=DEFAULT_SLEEP_SECS, log=False, log_obj=None):
         super(SyncHandler, self).__init__()
@@ -156,10 +158,13 @@ class SyncHandler(threading.Thread):
                     self._download(f, local_files_tm, cloud_files_tm)
                 elif local_entry.timestamp > cloud_entry.timestamp:
                     self._upload(f, local_files_tm, cloud_files_tm)
+    
+    def stop(self):
+        self.stopped = True
         
     def run(self):
         self.sync()        
-        if self.loop:
+        if self.loop and not self.stopped:
             time.sleep(self.sec)
             self.sync()
             
