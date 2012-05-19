@@ -12,16 +12,18 @@ import platform
 import subprocess
 
 class Log(object):
-    def __init__(self, log_file):
+    def __init__(self, log_file, hide=True):
         dirname = os.path.dirname(log_file)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
         
         self.log_file = log_file
+        self.hide = hide
             
     def _win_hide(self):
         sys_name = platform.system()
-        if sys_name == 'Windows' and os.path.exists(self.log_file):
+        if self.hide and sys_name == 'Windows' \
+            and os.path.exists(self.log_file):
             subprocess.call('attrib +h %s' % self.log_file, shell=True)
         
     def write(self, itm):
