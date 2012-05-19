@@ -13,6 +13,7 @@ import hashlib
 
 from cloud import Storage, S3Storage
 from utils import join_local_path, get_sys_encoding
+from CloudBackup.log import Log
 from CloudBackup.lib.utils import calc_md5
 
 SPACE_REPLACE = '#$&'
@@ -26,7 +27,8 @@ class FileEntry(object):
         self.md5 = md5
 
 class SyncHandler(threading.Thread):
-    def __init__(self, storage, folder_name, loop=True, sec=DEFAULT_SLEEP_SECS):
+    def __init__(self, storage, folder_name, 
+                 loop=True, sec=DEFAULT_SLEEP_SECS, log=False, log_obj=None):
         super(SyncHandler, self).__init__()
         
         assert isinstance(storage, Storage)
@@ -38,6 +40,14 @@ class SyncHandler(threading.Thread):
         
         self.encoding = get_sys_encoding()
         self.calc_md5 = lambda data: hashlib.md5(data).hexdigest()
+        
+        self.log = log
+        if log and log_obj:
+            self.log_obj = log_obj
+        elif log:
+            log_file = os.path.join(self.folder_name,
+                '.%s.log.txt' % self.storage.__class__.__name__.rsplit('Storage')[0].lower())
+            self.log_obj = Log(log_file)
     
     def local_to_cloud(self, path, timestamp):
         splits = path.rsplit('.', 1)
@@ -84,6 +94,9 @@ class SyncHandler(threading.Thread):
         
         for dirpath, dirnames, filenames in os.walk(self.folder_name):
             for filename in filenames:
+                if filename.startswith('.'):
+                    continue
+                
                 abs_filename = os.path.join(dirpath, filename)
                 rel_path = abs_filename.split(folder_name, 1)[1]
                 rel_path = rel_path.decode(self.encoding).encode('utf-8')
@@ -105,6 +118,9 @@ class SyncHandler(threading.Thread):
         cloud_path = self.local_to_cloud(f, timestamp)
         self.storage.upload(cloud_path, filename)
         
+        if self.log:
+            self.log_obj.write('上传了文件：%s' % f)
+        
     def _download(self, f, local_files_tm, cloud_files_tm):
         filename = join_local_path(self.folder_name, 
                                    f.decode('utf-8').encode(self.encoding))
@@ -114,6 +130,9 @@ class SyncHandler(threading.Thread):
         
         cloud_path = cloud_files_tm[f].path
         self.storage.download(cloud_path, filename)
+        
+        if self.log:
+            self.log_obj.write('下载了文件：%s' % f)
     
     def sync(self):
         local_files_tm = self._get_local_files()
