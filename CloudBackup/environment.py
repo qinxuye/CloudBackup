@@ -97,6 +97,8 @@ class Environment(object):
             
             self.vdisk_handler.stop()
             self.vdisk_handler = None
+            
+            self.remove_vdisk_info()
         finally:
             self.vdisk_lock.release()
             
@@ -125,7 +127,7 @@ class Environment(object):
         finally:
             fp.close()
             
-    def load_vdisk_info(self, folder_name, offset=OFFSET):
+    def load_vdisk_info(self, offset=OFFSET):
         
         save_file = os.path.join(get_log_path(), '.vdisk.setting.txt')
         
@@ -151,6 +153,12 @@ class Environment(object):
             return args
         finally:
             fp.close()
+            
+    def remove_vdisk_info(self):
+        save_file = os.path.join(get_log_path(), '.vdisk.setting.txt')
+        
+        if not os.path.exists(save_file):
+            os.remove(save_file)
         
     def setup_s3(self, access_key, secret_access_key, local_folder, holder,
                  log=True, encrypt=False, encrypt_code=None, force_stop=True):
@@ -189,6 +197,8 @@ class Environment(object):
             
             self.s3_handler.stop()
             self.s3_handler = None
+            
+            self.remove_s3_info()
         finally:
             self.s3_lock.release()
             
@@ -214,7 +224,7 @@ class Environment(object):
         finally:
             fp.close()
             
-    def load_s3_info(self, folder_name):
+    def load_s3_info(self):
         
         save_file = os.path.join(get_log_path(), '.s3.setting.txt')
         
@@ -238,6 +248,12 @@ class Environment(object):
             return args
         finally:
             fp.close()
+            
+    def remove_s3_info(self):
+        save_file = os.path.join(get_log_path(), '.s3.setting.txt')
+        
+        if not os.path.exists(save_file):
+            os.remove(save_file)
         
     def setup_gs(self, access_key, secret_access_key, project_id, local_folder, holder,
                  log=True, encrypt=False, encrypt_code=None, force_stop=True):
@@ -276,6 +292,8 @@ class Environment(object):
             
             self.gs_handler.stop()
             self.gs_handler = None
+            
+            self.remove_gs_info()
         finally:
             self.gs_lock.release()
             
@@ -301,7 +319,7 @@ class Environment(object):
         finally:
             fp.close()
             
-    def load_gs_info(self, folder_name):
+    def load_gs_info(self):
         
         save_file = os.path.join(get_log_path(), '.gs.setting.txt')
         
@@ -325,3 +343,9 @@ class Environment(object):
             return args
         finally:
             fp.close()
+            
+    def remove_gs_info(self):
+        save_file = os.path.join(get_log_path(), '.gs.setting.txt')
+        
+        if not os.path.exists(save_file):
+            os.remove(save_file)
