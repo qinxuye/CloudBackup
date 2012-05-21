@@ -60,6 +60,9 @@ class Log(object):
             fp.close()
     
     def get_logs(self):
+        if not os.path.exists(self.log_file):
+            return []
+        
         fp = open(self.log_file)
         for itm in reversed(fp.readlines()):
             content = itm.strip()
