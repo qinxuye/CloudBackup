@@ -61,7 +61,7 @@ class Log(object):
     
     def get_logs(self):
         if not os.path.exists(self.log_file):
-            return []
+            yield
         
         fp = open(self.log_file)
         for itm in reversed(fp.readlines()):
