@@ -40,3 +40,10 @@ def win_hide_file(log_file):
     sys_name = platform.system()
     if sys_name == 'Windows' and os.path.exists(log_file):
         subprocess.call('attrib +h %s' % log_file, shell=True)
+        
+get_root_path = lambda: os.path.dirname(__file__)
+get_log_path = lambda: os.path.join(get_root_path(), '.cldbkp.log')
+
+def ensure_folder_exsits(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)

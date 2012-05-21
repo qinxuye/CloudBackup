@@ -30,7 +30,7 @@ from CloudBackup.lib.errors import VdiskError, S3Error, GSError
 from CloudBackup.cloud import VdiskStorage, S3Storage, GSStorage
 from CloudBackup.local import SyncHandler, S3SyncHandler
 from CloudBackup.errors import CloudBackupError
-from CloudBackup.utils import win_hide_file
+from CloudBackup.utils import win_hide_file, get_log_path, ensure_folder_exsits
 from CloudBackup.test.settings import VDISK_APP_KEY, VDISK_APP_SECRET
 
 DEFAULT_SLEEP_MINUTS = 1
@@ -106,7 +106,9 @@ class Environment(object):
         if self.vdisk_handler is None:
             return
         
-        save_file = os.path.join(self.vdisk_handler.folder_name, '.vdisk.setting.txt')
+        log_path = get_log_path()
+        ensure_folder_exsits(log_path)
+        save_file = os.path.join(log_path, '.vdisk.setting.txt')
         
         args = locals()
         
@@ -125,7 +127,7 @@ class Environment(object):
             
     def load_vdisk_info(self, folder_name, offset=OFFSET):
         
-        save_file = os.path.join(folder_name, '.vdisk.setting.txt')
+        save_file = os.path.join(get_log_path(), '.vdisk.setting.txt')
         
         if not os.path.exists(save_file):
             return
@@ -196,7 +198,9 @@ class Environment(object):
         if self.s3_handler is None:
             return
         
-        save_file = os.path.join(self.s3_handler.folder_name, '.s3.setting.txt')
+        log_path = get_log_path()
+        ensure_folder_exsits(log_path)
+        save_file = os.path.join(log_path, '.s3.setting.txt')
         
         args = locals()
         
@@ -212,7 +216,7 @@ class Environment(object):
             
     def load_s3_info(self, folder_name):
         
-        save_file = os.path.join(folder_name, '.s3.setting.txt')
+        save_file = os.path.join(get_log_path(), '.s3.setting.txt')
         
         if not os.path.exists(save_file):
             return
@@ -281,7 +285,9 @@ class Environment(object):
         if self.gs_handler is None:
             return
         
-        save_file = os.path.join(self.gs_handler.folder_name, '.gs.setting.txt')
+        log_path = get_log_path()
+        ensure_folder_exsits(log_path)
+        save_file = os.path.join(log_path, '.gs.setting.txt')
         
         args = locals()
         
@@ -297,7 +303,7 @@ class Environment(object):
             
     def load_gs_info(self, folder_name):
         
-        save_file = os.path.join(folder_name, '.gs.setting.txt')
+        save_file = os.path.join(get_log_path(), '.gs.setting.txt')
         
         if not os.path.exists(save_file):
             return
