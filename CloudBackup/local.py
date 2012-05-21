@@ -142,7 +142,7 @@ class SyncHandler(threading.Thread):
         self.storage.upload(cloud_path, filename)
         
         if self.log:
-            self.log_obj.write('上传了文件：%s' % f)
+            self.log_obj.write('Upload file：%s' % f)
         
     def _download(self, f, local_files_tm, cloud_files_tm):
         filename = join_local_path(self.folder_name, 
@@ -155,7 +155,7 @@ class SyncHandler(threading.Thread):
         self.storage.download(cloud_path, filename)
         
         if self.log:
-            self.log_obj.write('下载了文件：%s' % f)
+            self.log_obj.write('Download file：%s' % f)
     
     def sync(self):
         local_files_tm = self._get_local_files()
