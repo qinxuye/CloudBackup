@@ -28,7 +28,7 @@ import hashlib
 from cloud import Storage, S3Storage
 from utils import join_local_path, get_sys_encoding
 from CloudBackup.log import Log
-from CloudBackup.lib.utils import calc_md5
+from CloudBackup.lib.vdisk import VdiskClient
 
 SPACE_REPLACE = '#$&'
 DEFAULT_SLEEP_MINUTS = 5
@@ -39,6 +39,24 @@ class FileEntry(object):
         self.path = path
         self.timestamp = timestamp
         self.md5 = md5
+        
+class VdiskRefreshToken(threading.Thread):
+    stopped = False
+    def __init__(self, client):
+        assert isinstance(client, VdiskClient)
+        super(VdiskRefreshToken, self).__init__()
+        self.client = client
+        
+    def refresh_token(self):
+        self.client.keep_token()
+        
+    def stop(self):
+        self.stopped = True
+        
+    def run(self, sleep_minutes=10):
+        while not self.stopped:
+            self.refresh_token()
+            time.sleep(sleep_minutes * 60)
 
 class SyncHandler(threading.Thread):
     stopped = False

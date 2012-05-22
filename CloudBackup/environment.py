@@ -28,7 +28,7 @@ from CloudBackup.lib.s3 import S3Client, CryptoS3Client
 from CloudBackup.lib.gs import GSClient, CryptoGSClient
 from CloudBackup.lib.errors import VdiskError, S3Error, GSError
 from CloudBackup.cloud import VdiskStorage, S3Storage, GSStorage
-from CloudBackup.local import SyncHandler, S3SyncHandler
+from CloudBackup.local import SyncHandler, S3SyncHandler, VdiskRefreshToken
 from CloudBackup.errors import CloudBackupError
 from CloudBackup.utils import win_hide_file, get_log_path, ensure_folder_exsits
 from CloudBackup.test.settings import VDISK_APP_KEY, VDISK_APP_SECRET
@@ -43,6 +43,7 @@ class Environment(object):
     
     vdisk_handler = None
     vdisk_lock = threading.Lock()
+    vdisk_token_refresh = None
     
     s3_handler = None
     s3_lock = threading.Lock()
@@ -73,6 +74,8 @@ class Environment(object):
             else:
                 client = VdiskClient(VDISK_APP_KEY, VDISK_APP_SECRET)
                 client.auth(account, password, 'sinat' if is_weibo else 'local')
+            self.vdisk_token_refresh = VdiskRefreshToken(client)
+            self.vdisk_token_refresh.start()
                 
             storage = VdiskStorage(client, holder_name=holder)
             
@@ -97,6 +100,8 @@ class Environment(object):
             
             self.vdisk_handler.stop()
             self.vdisk_handler = None
+            self.vdisk_token_refresh.stop()
+            self.vdisk_token_refresh = None
             
             self.remove_vdisk_info()
         finally:

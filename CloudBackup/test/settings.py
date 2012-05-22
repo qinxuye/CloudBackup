@@ -38,6 +38,13 @@ GS_SECRET_ACCESS_KEY = ''
 GS_PROJECT_ID = ''
 GS_USER_ID = ''
 
+# Email
+EMAIL_HOST = ""
+EMAIL_HOST_PASSWORD = ""
+EMAIL_HOST_USER = ""
+email_port = 25
+email_use_tls = True
+
 try:
     from local_settings import *
 except ImportError:
