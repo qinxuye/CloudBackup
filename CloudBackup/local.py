@@ -208,8 +208,9 @@ class SyncHandler(threading.Thread):
             self.sync()
             
 class S3SyncHandler(SyncHandler):
-    def __init__(self, storage, folder_name, loop=True, sec=DEFAULT_SLEEP_SECS):
-        super(S3SyncHandler, self).__init__(storage, folder_name, loop, sec)
+    def __init__(self, storage, folder_name, loop=True, sec=DEFAULT_SLEEP_SECS, 
+                 log=False, log_obj=None):
+        super(S3SyncHandler, self).__init__(storage, folder_name, loop, sec, log, log_obj)
         
         assert isinstance(storage, S3Storage)
         
