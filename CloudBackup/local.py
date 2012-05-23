@@ -144,14 +144,19 @@ class SyncHandler(threading.Thread):
                 rel_path = abs_filename.split(folder_name, 1)[1]
                 rel_path = rel_path.decode(self.encoding).encode('utf-8')
                 timestamp = int(os.path.getmtime(abs_filename))
-                md5 = self.calc_md5(open(abs_filename, 'rb').read())
+                fp = open(abs_filename, 'rb')
                 
-                entry = FileEntry(abs_filename, timestamp, md5)
-                
-                if os.sep == '/':
-                    files[rel_path] = entry
-                else:
-                    files[rel_path.replace(os.sep, '/')] = entry
+                try:
+                    md5 = self.calc_md5(fp.read())
+                    
+                    entry = FileEntry(abs_filename, timestamp, md5)
+                    
+                    if os.sep == '/':
+                        files[rel_path] = entry
+                    else:
+                        files[rel_path.replace(os.sep, '/')] = entry
+                finally:
+                    fp.close()
                     
         return files
     
