@@ -149,14 +149,15 @@ class Environment(object):
                 handler.start()
                 self.vdisk_handler = handler
                 
-                self.save_vdisk_info(account, password, is_weibo, log, encrypt, encrypt_code)
+                self.save_vdisk_info(account, password, local_folder, holder,
+                                     is_weibo, log, encrypt, encrypt_code)
                 return handler
             except VdiskError, e:
                 raise CloudBackupError(e.src, e.err_no, e.msg)
         finally:
             self.vdisk_lock.release()
             
-    def stop_vdisk(self):
+    def stop_vdisk(self, clear_info=True):
         try:
             self.vdisk_lock.acquire()
             
@@ -168,12 +169,13 @@ class Environment(object):
             self.vdisk_token_refresh.stop()
             self.vdisk_token_refresh = None
             
-            self.remove_vdisk_info()
+            if clear_info:
+                self.remove_vdisk_info()
         finally:
             self.vdisk_lock.release()
             
-    def save_vdisk_info(self, account, password, is_weibo=False, 
-                           log=True, encrypt=False, encrypt_code=None):
+    def save_vdisk_info(self, account, password, local_folder, holder,
+                        is_weibo=False, log=True, encrypt=False, encrypt_code=None):
         
         if self.vdisk_handler is None:
             return
@@ -185,6 +187,8 @@ class Environment(object):
             
     def load_vdisk_info(self):
         info = get_info('vdisk', lambda s: s)
+        if info is None:
+            return
         info['password'] = self._get_decrypt(self._get_iv(info['account']))(info.pop('password'))
         return info
             
@@ -216,13 +220,17 @@ class Environment(object):
                 handler = S3SyncHandler(storage, local_folder, sec=DEFAULT_SLEEP_SECS, log=log)
                 handler.start()
                 self.s3_handler = handler
+                
+                self.save_s3_info(access_key, secret_access_key, local_folder, holder, 
+                                  log, encrypt, encrypt_code)
+                
                 return handler
             except S3Error, e:
                 raise CloudBackupError(e.src, e.err_no, e.msg)
         finally:
             self.s3_lock.release()
             
-    def stop_s3(self):
+    def stop_s3(self, clear_info=True):
         try:
             self.s3_lock.acquire()
             
@@ -232,11 +240,12 @@ class Environment(object):
             self.s3_handler.stop()
             self.s3_handler = None
             
-            self.remove_s3_info()
+            if clear_info:
+                self.remove_s3_info()
         finally:
             self.s3_lock.release()
             
-    def save_s3_info(self, access_key, secret_access_key,
+    def save_s3_info(self, access_key, secret_access_key, local_folder, holder,
                            log=True, encrypt=False, encrypt_code=None):
         
         if self.s3_handler is None:
@@ -279,13 +288,17 @@ class Environment(object):
                 handler = SyncHandler(storage, local_folder, sec=DEFAULT_SLEEP_SECS, log=log)
                 handler.start()
                 self.gs_handler = handler
+                
+                self.save_gs_info(access_key, secret_access_key, project_id, 
+                                  local_folder, holder, log, encrypt, encrypt_code)
+                
                 return handler
             except GSError, e:
                 raise CloudBackupError(e.src, e.err_no, e.msg)
         finally:
             self.gs_lock.release()
             
-    def stop_gs(self):
+    def stop_gs(self, clear_info=True):
         try:
             self.gs_lock.acquire()
             
@@ -295,12 +308,14 @@ class Environment(object):
             self.gs_handler.stop()
             self.gs_handler = None
             
-            self.remove_gs_info()
+            if clear_info:
+                self.remove_gs_info()
         finally:
             self.gs_lock.release()
             
     def save_gs_info(self, access_key, secret_access_key, project_id,
-                           log=True, encrypt=False, encrypt_code=None):
+                     local_folder, holder,
+                     log=True, encrypt=False, encrypt_code=None):
         
         if self.gs_handler is None:
             return

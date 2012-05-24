@@ -24,11 +24,13 @@ import threading
 import os
 import time
 import hashlib
+import logging
 
 from cloud import Storage, S3Storage
-from utils import join_local_path, get_sys_encoding
+from utils import join_local_path, get_sys_encoding, get_info_path, ensure_folder_exsits
 from CloudBackup.log import Log
 from CloudBackup.lib.vdisk import VdiskClient
+from CloudBackup.lib.errors import VdiskError, CloudBackupLibError
 
 SPACE_REPLACE = '#$&'
 DEFAULT_SLEEP_MINUTS = 5
@@ -75,6 +77,15 @@ class SyncHandler(threading.Thread):
         self.encoding = get_sys_encoding()
         self.calc_md5 = lambda data: hashlib.md5(data).hexdigest()
         
+        # init the error log
+        self.error_log = logging.getLogger()
+        info_path = get_info_path()
+        ensure_folder_exsits(info_path)
+        handler = logging.FileHandler(os.path.join(info_path, '.log'))
+        self.error_log.addHandler(handler)
+        self.error_log.setLevel(logging.DEBUG)
+        
+        # init the action log
         self.log = log
         if log and log_obj:
             self.log_obj = log_obj
@@ -164,8 +175,21 @@ class SyncHandler(threading.Thread):
         entry = local_files_tm[f]
         filename, timestamp = entry.path, entry.timestamp
         cloud_path = self.local_to_cloud(f, timestamp)
-        self.storage.upload(cloud_path, filename)
         
+        def _action(try_times=3, sleep_sec=3):
+            tries = 0
+            while tries <= try_times:
+                try:
+                    self.storage.upload(cloud_path, filename)
+                    break
+                except VdiskError, e:
+                    if e.err_no == 6 or e.err_no == 5:
+                        time.sleep(sleep_sec)
+                        tries += 1
+                    else:
+                        raise e
+        _action()
+                    
         if self.log:
             self.log_obj.write('Upload file: %s' % f)
         
@@ -183,27 +207,31 @@ class SyncHandler(threading.Thread):
             self.log_obj.write('Download file: %s' % f)
     
     def sync(self):
-        local_files_tm = self._get_local_files()
-        cloud_files_tm = self._get_cloud_files()
-        
-        local_files = set(local_files_tm.keys())
-        cloud_files = set(cloud_files_tm.keys())
-        
-        for f in (local_files - cloud_files):
-            self._upload(f, local_files_tm, cloud_files_tm)
+        try:
+            local_files_tm = self._get_local_files()
+            cloud_files_tm = self._get_cloud_files()
             
-        for f in (cloud_files - local_files):
-            self._download(f, local_files_tm, cloud_files_tm)
+            local_files = set(local_files_tm.keys())
+            cloud_files = set(cloud_files_tm.keys())
             
-        for f in (cloud_files & local_files):
-            local_entry = local_files_tm[f]
-            cloud_entry = cloud_files_tm[f]
-            
-            if local_entry.md5 != cloud_entry.md5:
-                if local_entry.timestamp < cloud_entry.timestamp:
-                    self._download(f, local_files_tm, cloud_files_tm)
-                elif local_entry.timestamp > cloud_entry.timestamp:
-                    self._upload(f, local_files_tm, cloud_files_tm)
+            for f in (local_files - cloud_files):
+                self._upload(f, local_files_tm, cloud_files_tm)
+                
+            for f in (cloud_files - local_files):
+                self._download(f, local_files_tm, cloud_files_tm)
+                
+            for f in (cloud_files & local_files):
+                local_entry = local_files_tm[f]
+                cloud_entry = cloud_files_tm[f]
+                
+                if local_entry.md5 != cloud_entry.md5:
+                    if local_entry.timestamp < cloud_entry.timestamp:
+                        self._download(f, local_files_tm, cloud_files_tm)
+                    elif local_entry.timestamp > cloud_entry.timestamp:
+                        self._upload(f, local_files_tm, cloud_files_tm)
+                        
+        except CloudBackupLibError, e:
+            self.error_log.exception(str(e))
     
     def stop(self):
         self.stopped = True
@@ -217,6 +245,7 @@ class SyncHandler(threading.Thread):
         if self.loop and not self.stopped:
             time.sleep(self.sec)
             self.sync()
+        
             
 class S3SyncHandler(SyncHandler):
     def __init__(self, storage, folder_name, loop=True, sec=DEFAULT_SLEEP_SECS, 

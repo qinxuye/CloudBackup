@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GoogleCloudLoginUI</class>
+ <widget class="QWidget" name="GoogleCloudLoginUI">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>380</width>
+    <height>223</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>GoogleCloud登陆</string>
+  </property>
+  <widget class="QWidget" name="formLayoutWidget_2">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>30</y>
+     <width>331</width>
+     <height>103</height>
+    </rect>
+   </property>
+   <layout class="QFormLayout" name="gFormLayout">
+    <property name="fieldGrowthPolicy">
+     <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+    </property>
+    <property name="horizontalSpacing">
+     <number>10</number>
+    </property>
+    <property name="verticalSpacing">
+     <number>10</number>
+    </property>
+    <property name="margin">
+     <number>10</number>
+    </property>
+    <item row="0" column="0">
+     <widget class="QLabel" name="lg_access_key">
+      <property name="text">
+       <string>ACCESS_KEY</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QLineEdit" name="tg_access_key"/>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="lg_secret_access_key">
+      <property name="text">
+       <string>SECRET_ACCESS_KEY</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="QLineEdit" name="tg_secret_access_key"/>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="lg_project_id">
+      <property name="text">
+       <string>PROJECT_ID</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
+     <widget class="QLineEdit" name="tg_project_id"/>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QWidget" name="gridLayoutWidget">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>150</y>
+     <width>331</width>
+     <height>39</height>
+    </rect>
+   </property>
+   <layout class="QGridLayout" name="gridLayout">
+    <property name="leftMargin">
+     <number>10</number>
+    </property>
+    <property name="rightMargin">
+     <number>10</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <property name="horizontalSpacing">
+     <number>10</number>
+    </property>
+    <item row="0" column="0">
+     <widget class="QPushButton" name="button_submit">
+      <property name="text">
+       <string>提交</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QPushButton" name="button_reset">
+      <property name="text">
+       <string>重置</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

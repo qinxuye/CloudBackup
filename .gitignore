@@ -4,6 +4,6 @@
 .settings/*
 CloudBackup/test/local_settings.py
 CloudBackup/test/*_test.py
-CloudBackup/.cldbkp.log/*
+CloudBackup/.info/*
 build/*
 dist/*
