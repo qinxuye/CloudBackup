@@ -209,6 +209,10 @@ class SyncHandler(threading.Thread):
         self.stopped = True
         
     def run(self):
+        if self.folder_name is None or \
+            len(self.folder_name) == 0:
+            return
+        
         self.sync()        
         if self.loop and not self.stopped:
             time.sleep(self.sec)

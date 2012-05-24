@@ -27,18 +27,21 @@ from utils import win_hide_file
 
 class Log(object):
     def __init__(self, log_file, hide=True):
-        dirname = os.path.dirname(log_file)
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-        
         self.log_file = log_file
         self.hide = hide
             
     def _win_hide(self):
         if self.hide:
             win_hide_file(self.log_file)
+            
+    def _ensure_folder_exsits(self):
+        dirname = os.path.dirname(self.log_file)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
         
     def write(self, itm):
+        self._ensure_folder_exsits()
+        
         fp = open(self.log_file, 'a+')
         try:
             time_str = time.strftime("%Y-%m-%d %X", time.localtime())
@@ -49,6 +52,8 @@ class Log(object):
             fp.close()
             
     def write_logs(self, itms):
+        self._ensure_folder_exsits()
+        
         fp = open(self.log_file, 'a+')
         try:
             for itm in itms:

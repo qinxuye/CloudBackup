@@ -20,6 +20,9 @@ Created on 2012-4-24
 @author: Chine
 '''
 
+# If you want to compile the cloud backup on windows, please set EXE_COMPILE to True.
+EXE_COMPILE = False
+
 # Vdisk
 VDISK_APP_KEY = ''
 VDISK_APP_SECRET = ''

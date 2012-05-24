@@ -22,21 +22,71 @@ Created on 2012-5-19
 
 import threading
 import os
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 from CloudBackup.lib.vdisk import VdiskClient, CryptoVdiskClient
 from CloudBackup.lib.s3 import S3Client, CryptoS3Client
 from CloudBackup.lib.gs import GSClient, CryptoGSClient
 from CloudBackup.lib.errors import VdiskError, S3Error, GSError
+from CloudBackup.lib.crypto import DES
 from CloudBackup.cloud import VdiskStorage, S3Storage, GSStorage
 from CloudBackup.local import SyncHandler, S3SyncHandler, VdiskRefreshToken
 from CloudBackup.errors import CloudBackupError
-from CloudBackup.utils import win_hide_file, get_log_path, ensure_folder_exsits
+from CloudBackup.utils import win_hide_file, get_info_path, ensure_folder_exsits
 from CloudBackup.test.settings import VDISK_APP_KEY, VDISK_APP_SECRET
 
 DEFAULT_SLEEP_MINUTS = 1
 DEFAULT_SLEEP_SECS = DEFAULT_SLEEP_MINUTS * 60
 
 OFFSET = 3
+
+get_settings_path = lambda dirpath, setting_type: \
+    os.path.join(dirpath, '.%s.setting' % setting_type)
+encrypt = lambda s: ','.join((str(ord(l) + OFFSET) for l in s))
+decrypt = lambda s: ''.join((chr(int(l) - OFFSET) for l in s.split(',')))
+    
+def serilize(file_obj, content, encrypt_func, *encrypt_fields):
+    assert isinstance(content, dict)
+    for field in encrypt_fields:
+        if field in content:
+            content[field] = encrypt_func(content.pop(field))
+    pickle.dump(content, file_obj)
+    
+def unserilize(file_obj, decrypt_func, *decrypt_fields):
+    file_obj.seek(0)
+    content = pickle.load(file_obj)
+    for field in decrypt_fields:
+        if field in content:
+            print 'done!'
+            content[field] = decrypt_func(content.pop(field))
+    return content
+
+def save_info(info_type, content, encrypt_func, *encrypt_fields):
+    folder_name = get_info_path()
+    ensure_folder_exsits(folder_name)
+    
+    settings_path = get_settings_path(folder_name, info_type)
+    file_obj = open(settings_path, 'w+')
+    try:
+        serilize(file_obj, content, encrypt_func, *encrypt_fields)
+    finally:
+        file_obj.close()
+        
+def get_info(info_type, decrypt_func, *decrypt_fields):
+    folder_name = get_info_path()
+    settings_path = get_settings_path(folder_name, info_type)
+    
+    if not os.path.exists(settings_path):
+        return
+    
+    file_obj = open(settings_path, 'r')
+    try:
+        return unserilize(file_obj, decrypt_func, *decrypt_fields)
+    finally:
+        file_obj.close()
 
 class Environment(object):
     instance = None
@@ -56,6 +106,21 @@ class Environment(object):
             cls.instance = super(Environment, cls).__new__(
                             cls, *args, **kwargs)
         return cls.instance
+    
+    def _get_iv(self, astr):
+        if len(astr) >= 8:
+            iv = astr[:8]
+        else:
+            iv = astr + '*' * (8 - len(astr))
+        return iv
+    
+    def _get_encrypt(self, iv):
+        des = DES(iv)
+        return des.encrypt
+    
+    def _get_decrypt(self, iv):
+        des = DES(iv)
+        return des.decrypt
     
     def setup_vdisk(self, account, password, local_folder, holder, is_weibo=False, 
                     log=True, encrypt=False, encrypt_code=None, force_stop=True):
@@ -108,61 +173,25 @@ class Environment(object):
             self.vdisk_lock.release()
             
     def save_vdisk_info(self, account, password, is_weibo=False, 
-                           log=True, encrypt=False, encrypt_code=None, offset=OFFSET):
+                           log=True, encrypt=False, encrypt_code=None):
         
         if self.vdisk_handler is None:
             return
         
-        log_path = get_log_path()
-        ensure_folder_exsits(log_path)
-        save_file = os.path.join(log_path, '.vdisk.setting.txt')
-        
         args = locals()
+        del args['self']
         
-        fp = open(save_file, 'w')
-        try:
-            for arg in ('account', 'password',
-                        'is_weibo', 'log', 'encrypt', 'encrypt_code'):
-                if arg == 'password':
-                    args['password'] = ','.join((str(ord(l) + offset) for l in args.pop('password')))
-                
-                fp.write(arg + '\t' + str(args[arg]) + '\n')
-                
-            win_hide_file(save_file)
-        finally:
-            fp.close()
+        save_info('vdisk', args, self._get_encrypt(self._get_iv(account)), 'password')
             
-    def load_vdisk_info(self, offset=OFFSET):
-        
-        save_file = os.path.join(get_log_path(), '.vdisk.setting.txt')
-        
-        if not os.path.exists(save_file):
-            return
-        
-        args = {}
-        
-        fp = open(save_file, 'r')
-        try:
-            for line in fp.readlines():
-                arg, content = line.strip().split('\t')
-                if arg == 'password':
-                    args['password'] = ''.join((chr(int(l) - offset) \
-                                                for l in content.split(',')))
-                elif arg == 'is_weibo' or arg == 'log' or arg == 'encrypt':
-                    args[arg] = bool(content)
-                elif arg == 'encrypt_code':
-                    args[arg] = None if content == 'None' else content
-                else:
-                    args[arg] = content
-                    
-            return args
-        finally:
-            fp.close()
+    def load_vdisk_info(self):
+        info = get_info('vdisk', lambda s: s)
+        info['password'] = self._get_decrypt(self._get_iv(info['account']))(info.pop('password'))
+        return info
             
     def remove_vdisk_info(self):
-        save_file = os.path.join(get_log_path(), '.vdisk.setting.txt')
+        save_file = get_settings_path(get_info_path(), 'vdisk')
         
-        if not os.path.exists(save_file):
+        if os.path.exists(save_file):
             os.remove(save_file)
         
     def setup_s3(self, access_key, secret_access_key, local_folder, holder,
@@ -213,51 +242,19 @@ class Environment(object):
         if self.s3_handler is None:
             return
         
-        log_path = get_log_path()
-        ensure_folder_exsits(log_path)
-        save_file = os.path.join(log_path, '.s3.setting.txt')
-        
         args = locals()
+        del args['self']
         
-        fp = open(save_file, 'w')
-        try:
-            for arg in ('access_key', 'secret_access_key',
-                        'log', 'encrypt', 'encrypt_code'):
-                fp.write(arg + '\t' + str(args[arg]) + '\n')
-                
-            win_hide_file(save_file)
-        finally:
-            fp.close()
+        save_info('s3', args, lambda s: s)
             
     def load_s3_info(self):
-        
-        save_file = os.path.join(get_log_path(), '.s3.setting.txt')
-        
-        if not os.path.exists(save_file):
-            return
-        
-        args = {}
-        
-        fp = open(save_file, 'r')
-        try:
-            for line in fp.readlines():
-                arg, content = line.strip().split('\t')
-                
-                if arg == 'log' or arg == 'encrypt':
-                    args[arg] = bool(content)
-                elif arg == 'encrypt_code':
-                    args[arg] = None if content == 'None' else content
-                else:
-                    args[arg] = content
-                    
-            return args
-        finally:
-            fp.close()
+        info = get_info('s3', lambda s: s)
+        return info
             
     def remove_s3_info(self):
-        save_file = os.path.join(get_log_path(), '.s3.setting.txt')
+        save_file = get_settings_path(get_info_path(), 's3')
         
-        if not os.path.exists(save_file):
+        if os.path.exists(save_file):
             os.remove(save_file)
         
     def setup_gs(self, access_key, secret_access_key, project_id, local_folder, holder,
@@ -308,49 +305,17 @@ class Environment(object):
         if self.gs_handler is None:
             return
         
-        log_path = get_log_path()
-        ensure_folder_exsits(log_path)
-        save_file = os.path.join(log_path, '.gs.setting.txt')
-        
         args = locals()
+        del args['self']
         
-        fp = open(save_file, 'w')
-        try:
-            for arg in ('access_key', 'secret_access_key', 'project_id'
-                        'log', 'encrypt', 'encrypt_code'):
-                fp.write(arg + '\t' + str(args[arg]) + '\n')
-                
-            win_hide_file(save_file)
-        finally:
-            fp.close()
+        save_info('gs', args, lambda s: s)
             
     def load_gs_info(self):
-        
-        save_file = os.path.join(get_log_path(), '.gs.setting.txt')
-        
-        if not os.path.exists(save_file):
-            return
-        
-        args = {}
-        
-        fp = open(save_file, 'r')
-        try:
-            for line in fp.readlines():
-                arg, content = line.strip().split('\t')
-                
-                if arg == 'log' or arg == 'encrypt':
-                    args[arg] = bool(content)
-                elif arg == 'encrypt_code':
-                    args[arg] = None if content == 'None' else content
-                else:
-                    args[arg] = content
-                    
-            return args
-        finally:
-            fp.close()
+        info = get_info('gs', lambda s: s)
+        return info
             
     def remove_gs_info(self):
-        save_file = os.path.join(get_log_path(), '.gs.setting.txt')
+        save_file = get_settings_path(get_info_path(), 'gs')
         
-        if not os.path.exists(save_file):
+        if os.path.exists(save_file):
             os.remove(save_file)
