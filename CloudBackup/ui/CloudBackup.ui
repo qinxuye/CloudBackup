@@ -157,30 +157,27 @@
       <widget class="QPushButton" name="button_v_share">
        <property name="geometry">
         <rect>
-         <x>510</x>
+         <x>480</x>
          <y>320</y>
-         <width>93</width>
+         <width>121</width>
          <height>28</height>
         </rect>
        </property>
        <property name="text">
-        <string>分享</string>
+        <string>用邮件分享</string>
        </property>
       </widget>
-      <widget class="QLabel" name="lvshare">
+      <widget class="QPushButton" name="button_v_cloudflush">
        <property name="geometry">
         <rect>
-         <x>280</x>
-         <y>330</y>
-         <width>221</width>
-         <height>16</height>
+         <x>400</x>
+         <y>320</y>
+         <width>71</width>
+         <height>28</height>
         </rect>
        </property>
        <property name="text">
-        <string>点击按钮用邮件分享</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
+        <string>刷新</string>
        </property>
       </widget>
      </widget>
@@ -341,14 +338,14 @@
         <item row="0" column="2">
          <widget class="QPushButton" name="button_s_reset">
           <property name="text">
-           <string>重置</string>
+           <string>停止同步</string>
           </property>
          </widget>
         </item>
         <item row="0" column="1">
          <widget class="QPushButton" name="button_s_submit">
           <property name="text">
-           <string>提交</string>
+           <string>开始同步</string>
           </property>
          </widget>
         </item>
@@ -396,30 +393,27 @@
       <widget class="QPushButton" name="button_s_share">
        <property name="geometry">
         <rect>
-         <x>510</x>
+         <x>480</x>
          <y>320</y>
-         <width>93</width>
+         <width>121</width>
          <height>28</height>
         </rect>
        </property>
        <property name="text">
-        <string>分享</string>
+        <string>用邮件分享</string>
        </property>
       </widget>
-      <widget class="QLabel" name="lsshare">
+      <widget class="QPushButton" name="button_s_cloudflush">
        <property name="geometry">
         <rect>
-         <x>280</x>
-         <y>330</y>
-         <width>221</width>
-         <height>16</height>
+         <x>400</x>
+         <y>320</y>
+         <width>71</width>
+         <height>28</height>
         </rect>
        </property>
        <property name="text">
-        <string>点击按钮用邮件分享</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
+        <string>刷新</string>
        </property>
       </widget>
      </widget>
@@ -465,9 +459,9 @@
     <widget class="QLabel" name="lsuserstate">
      <property name="geometry">
       <rect>
-       <x>540</x>
+       <x>370</x>
        <y>410</y>
-       <width>101</width>
+       <width>271</width>
        <height>20</height>
       </rect>
      </property>
@@ -479,6 +473,9 @@
      </property>
      <property name="text">
       <string>用户登录状态</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
    </widget>
@@ -559,14 +556,14 @@
         <item row="0" column="2">
          <widget class="QPushButton" name="button_g_reset">
           <property name="text">
-           <string>重置</string>
+           <string>停止同步</string>
           </property>
          </widget>
         </item>
         <item row="0" column="1">
          <widget class="QPushButton" name="button_g_submit">
           <property name="text">
-           <string>提交</string>
+           <string>开始同步</string>
           </property>
          </widget>
         </item>
@@ -614,30 +611,27 @@
       <widget class="QPushButton" name="button_g_share">
        <property name="geometry">
         <rect>
-         <x>510</x>
+         <x>480</x>
          <y>320</y>
-         <width>93</width>
+         <width>121</width>
          <height>28</height>
         </rect>
        </property>
        <property name="text">
-        <string>分享</string>
+        <string>用邮件分享</string>
        </property>
       </widget>
-      <widget class="QLabel" name="lgshare">
+      <widget class="QPushButton" name="button_g_cloudflush">
        <property name="geometry">
         <rect>
-         <x>280</x>
-         <y>330</y>
-         <width>221</width>
-         <height>16</height>
+         <x>400</x>
+         <y>320</y>
+         <width>71</width>
+         <height>28</height>
         </rect>
        </property>
        <property name="text">
-        <string>点击按钮用邮件分享</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
+        <string>刷新</string>
        </property>
       </widget>
      </widget>
@@ -683,9 +677,9 @@
     <widget class="QLabel" name="lguserstate">
      <property name="geometry">
       <rect>
-       <x>540</x>
+       <x>370</x>
        <y>410</y>
-       <width>101</width>
+       <width>271</width>
        <height>20</height>
       </rect>
      </property>
@@ -697,6 +691,9 @@
      </property>
      <property name="text">
       <string>用户登录状态</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
    </widget>

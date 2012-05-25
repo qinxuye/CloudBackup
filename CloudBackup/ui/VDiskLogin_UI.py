@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'VDiskLogin.ui'
 #
-# Created: Tue May 15 20:17:37 2012
+# Created: Fri May 25 16:53:37 2012
 #      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -17,9 +17,9 @@ except AttributeError:
 class Ui_VDiskCloudLoginUI(object):
     def setupUi(self, VDiskCloudLoginUI):
         VDiskCloudLoginUI.setObjectName(_fromUtf8("VDiskCloudLoginUI"))
-        VDiskCloudLoginUI.resize(393, 223)
+        VDiskCloudLoginUI.resize(390, 272)
         self.formLayoutWidget = QtGui.QWidget(VDiskCloudLoginUI)
-        self.formLayoutWidget.setGeometry(QtCore.QRect(40, 30, 311, 101))
+        self.formLayoutWidget.setGeometry(QtCore.QRect(40, 30, 311, 182))
         self.formLayoutWidget.setObjectName(_fromUtf8("formLayoutWidget"))
         self.vFormLayout = QtGui.QFormLayout(self.formLayoutWidget)
         self.vFormLayout.setFieldGrowthPolicy(QtGui.QFormLayout.AllNonFixedFieldsGrow)
@@ -41,8 +41,14 @@ class Ui_VDiskCloudLoginUI(object):
         self.tvpwd.setEchoMode(QtGui.QLineEdit.Password)
         self.tvpwd.setObjectName(_fromUtf8("tvpwd"))
         self.vFormLayout.setWidget(1, QtGui.QFormLayout.FieldRole, self.tvpwd)
+        self.tvencrypt = QtGui.QCheckBox(self.formLayoutWidget)
+        self.tvencrypt.setObjectName(_fromUtf8("tvencrypt"))
+        self.vFormLayout.setWidget(3, QtGui.QFormLayout.LabelRole, self.tvencrypt)
+        self.tvisweibo = QtGui.QCheckBox(self.formLayoutWidget)
+        self.tvisweibo.setObjectName(_fromUtf8("tvisweibo"))
+        self.vFormLayout.setWidget(2, QtGui.QFormLayout.LabelRole, self.tvisweibo)
         self.gridLayoutWidget = QtGui.QWidget(VDiskCloudLoginUI)
-        self.gridLayoutWidget.setGeometry(QtCore.QRect(40, 160, 311, 39))
+        self.gridLayoutWidget.setGeometry(QtCore.QRect(40, 220, 311, 39))
         self.gridLayoutWidget.setObjectName(_fromUtf8("gridLayoutWidget"))
         self.gridLayout = QtGui.QGridLayout(self.gridLayoutWidget)
         self.gridLayout.setContentsMargins(10, -1, 10, 0)
@@ -62,6 +68,8 @@ class Ui_VDiskCloudLoginUI(object):
         VDiskCloudLoginUI.setWindowTitle(QtGui.QApplication.translate("VDiskCloudLoginUI", "VDisk登陆", None, QtGui.QApplication.UnicodeUTF8))
         self.lvuser.setText(QtGui.QApplication.translate("VDiskCloudLoginUI", "用户名称", None, QtGui.QApplication.UnicodeUTF8))
         self.lvpwd.setText(QtGui.QApplication.translate("VDiskCloudLoginUI", "云端密码", None, QtGui.QApplication.UnicodeUTF8))
+        self.tvencrypt.setText(QtGui.QApplication.translate("VDiskCloudLoginUI", "是否加密", None, QtGui.QApplication.UnicodeUTF8))
+        self.tvisweibo.setText(QtGui.QApplication.translate("VDiskCloudLoginUI", "新浪微博用户", None, QtGui.QApplication.UnicodeUTF8))
         self.button_submit.setText(QtGui.QApplication.translate("VDiskCloudLoginUI", "提交", None, QtGui.QApplication.UnicodeUTF8))
         self.button_reset.setText(QtGui.QApplication.translate("VDiskCloudLoginUI", "重置", None, QtGui.QApplication.UnicodeUTF8))
 

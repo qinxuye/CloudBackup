@@ -44,6 +44,7 @@ def win_hide_file(log_file):
         subprocess.call('attrib +h %s' % log_file, shell=True)
         
 get_root_path = lambda: os.path.dirname(__file__)
+
 def get_info_path():
     sys_name = platform.system()
     if sys_name == 'Windows' and EXE_COMPILE:
@@ -54,6 +55,15 @@ def get_info_path():
         return os.path.join(dirname, '.info')
     else:
         return os.path.join(get_root_path(), '.info')
+    
+def get_icon_path():
+    sys_name = platform.system()
+    if sys_name == 'Windows' and EXE_COMPILE:
+        import win32api
+        exe_name = win32api.GetModuleFileName((win32api.GetModuleHandle(None)))
+        return exe_name + ';1'
+    else:
+        return os.path.join(os.path.dirname(get_root_path()), 'cloudbackup.ico')
 
 def ensure_folder_exsits(dirname):
     if not os.path.exists(dirname):

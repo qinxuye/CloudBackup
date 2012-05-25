@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'S3Login.ui'
 #
-# Created: Wed May 23 16:40:49 2012
+# Created: Fri May 25 19:10:41 2012
 #      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -17,9 +17,9 @@ except AttributeError:
 class Ui_S3CloudLoginUI(object):
     def setupUi(self, S3CloudLoginUI):
         S3CloudLoginUI.setObjectName(_fromUtf8("S3CloudLoginUI"))
-        S3CloudLoginUI.resize(370, 224)
+        S3CloudLoginUI.resize(370, 235)
         self.formLayoutWidget_4 = QtGui.QWidget(S3CloudLoginUI)
-        self.formLayoutWidget_4.setGeometry(QtCore.QRect(20, 30, 331, 101))
+        self.formLayoutWidget_4.setGeometry(QtCore.QRect(20, 30, 331, 141))
         self.formLayoutWidget_4.setObjectName(_fromUtf8("formLayoutWidget_4"))
         self.sFormLayout = QtGui.QFormLayout(self.formLayoutWidget_4)
         self.sFormLayout.setFieldGrowthPolicy(QtGui.QFormLayout.AllNonFixedFieldsGrow)
@@ -41,8 +41,11 @@ class Ui_S3CloudLoginUI(object):
         self.ts_secret_access_key.setEchoMode(QtGui.QLineEdit.Normal)
         self.ts_secret_access_key.setObjectName(_fromUtf8("ts_secret_access_key"))
         self.sFormLayout.setWidget(1, QtGui.QFormLayout.FieldRole, self.ts_secret_access_key)
+        self.lsencrypt = QtGui.QCheckBox(self.formLayoutWidget_4)
+        self.lsencrypt.setObjectName(_fromUtf8("lsencrypt"))
+        self.sFormLayout.setWidget(2, QtGui.QFormLayout.LabelRole, self.lsencrypt)
         self.gridLayoutWidget = QtGui.QWidget(S3CloudLoginUI)
-        self.gridLayoutWidget.setGeometry(QtCore.QRect(20, 160, 331, 39))
+        self.gridLayoutWidget.setGeometry(QtCore.QRect(20, 180, 331, 39))
         self.gridLayoutWidget.setObjectName(_fromUtf8("gridLayoutWidget"))
         self.gridLayout = QtGui.QGridLayout(self.gridLayoutWidget)
         self.gridLayout.setContentsMargins(10, -1, 10, 0)
@@ -62,6 +65,7 @@ class Ui_S3CloudLoginUI(object):
         S3CloudLoginUI.setWindowTitle(QtGui.QApplication.translate("S3CloudLoginUI", "S3登陆", None, QtGui.QApplication.UnicodeUTF8))
         self.ls_access_key.setText(QtGui.QApplication.translate("S3CloudLoginUI", "ACCESS_KEY", None, QtGui.QApplication.UnicodeUTF8))
         self.ls_secret_access_key.setText(QtGui.QApplication.translate("S3CloudLoginUI", "SECRET_ACCESS_KEY", None, QtGui.QApplication.UnicodeUTF8))
+        self.lsencrypt.setText(QtGui.QApplication.translate("S3CloudLoginUI", "是否加密", None, QtGui.QApplication.UnicodeUTF8))
         self.button_submit.setText(QtGui.QApplication.translate("S3CloudLoginUI", "提交", None, QtGui.QApplication.UnicodeUTF8))
         self.button_reset.setText(QtGui.QApplication.translate("S3CloudLoginUI", "重置", None, QtGui.QApplication.UnicodeUTF8))
 

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>380</width>
-    <height>223</height>
+    <height>238</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <x>20</x>
      <y>30</y>
      <width>331</width>
-     <height>103</height>
+     <height>131</height>
     </rect>
    </property>
    <layout class="QFormLayout" name="gFormLayout">
@@ -65,13 +65,20 @@
     <item row="2" column="1">
      <widget class="QLineEdit" name="tg_project_id"/>
     </item>
+    <item row="3" column="0">
+     <widget class="QCheckBox" name="tgencrypt">
+      <property name="text">
+       <string>是否加密</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QWidget" name="gridLayoutWidget">
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>150</y>
+     <y>170</y>
      <width>331</width>
      <height>39</height>
     </rect>

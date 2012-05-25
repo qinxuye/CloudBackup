@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'VDiskShare.ui'
 #
-# Created: Wed May 23 15:06:58 2012
+# Created: Fri May 25 12:18:13 2012
 #      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -72,7 +72,9 @@ class Ui_Vdisk_Share(object):
     def retranslateUi(self, Vdisk_Share):
         Vdisk_Share.setWindowTitle(QtGui.QApplication.translate("Vdisk_Share", "VDisk用户分享", None, QtGui.QApplication.UnicodeUTF8))
         self.lvrec.setText(QtGui.QApplication.translate("Vdisk_Share", "收件人", None, QtGui.QApplication.UnicodeUTF8))
+        self.tvrec.setToolTip(QtGui.QApplication.translate("Vdisk_Share", "多个邮件之间用逗号隔开", None, QtGui.QApplication.UnicodeUTF8))
         self.lvtopic.setText(QtGui.QApplication.translate("Vdisk_Share", "主题", None, QtGui.QApplication.UnicodeUTF8))
+        self.tvtopic.setText(QtGui.QApplication.translate("Vdisk_Share", "通过CloudBackup分享文件", None, QtGui.QApplication.UnicodeUTF8))
         self.lvcontext.setText(QtGui.QApplication.translate("Vdisk_Share", "内容", None, QtGui.QApplication.UnicodeUTF8))
         self.button_reset.setText(QtGui.QApplication.translate("Vdisk_Share", "重置", None, QtGui.QApplication.UnicodeUTF8))
         self.button_submit.setText(QtGui.QApplication.translate("Vdisk_Share", "确定", None, QtGui.QApplication.UnicodeUTF8))

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>370</width>
-    <height>224</height>
+    <height>235</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <x>20</x>
      <y>30</y>
      <width>331</width>
-     <height>101</height>
+     <height>141</height>
     </rect>
    </property>
    <layout class="QFormLayout" name="sFormLayout">
@@ -59,13 +59,20 @@
       </property>
      </widget>
     </item>
+    <item row="2" column="0">
+     <widget class="QCheckBox" name="lsencrypt">
+      <property name="text">
+       <string>是否加密</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QWidget" name="gridLayoutWidget">
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>160</y>
+     <y>180</y>
      <width>331</width>
      <height>39</height>
     </rect>

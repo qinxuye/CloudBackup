@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'GoogleCloudShare.ui'
 #
-# Created: Wed May 23 16:23:47 2012
+# Created: Fri May 25 19:06:21 2012
 #      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -75,6 +75,8 @@ class Ui_GoogleCloud_Share(object):
         self.button_exit.setText(QtGui.QApplication.translate("GoogleCloud_Share", "退出", None, QtGui.QApplication.UnicodeUTF8))
         self.button_reset.setText(QtGui.QApplication.translate("GoogleCloud_Share", "重置", None, QtGui.QApplication.UnicodeUTF8))
         self.lgrec.setText(QtGui.QApplication.translate("GoogleCloud_Share", "收件人", None, QtGui.QApplication.UnicodeUTF8))
+        self.tgrec.setToolTip(QtGui.QApplication.translate("GoogleCloud_Share", "多个邮件之间用逗号隔开", None, QtGui.QApplication.UnicodeUTF8))
         self.lgtopic.setText(QtGui.QApplication.translate("GoogleCloud_Share", "主题", None, QtGui.QApplication.UnicodeUTF8))
+        self.tgtopic.setText(QtGui.QApplication.translate("GoogleCloud_Share", "通过CloudBackup分享文件", None, QtGui.QApplication.UnicodeUTF8))
         self.lgcontext.setText(QtGui.QApplication.translate("GoogleCloud_Share", "内容", None, QtGui.QApplication.UnicodeUTF8))
 

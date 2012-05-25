@@ -158,7 +158,11 @@ class SyncHandler(threading.Thread):
                 fp = open(abs_filename, 'rb')
                 
                 try:
-                    md5 = self.calc_md5(fp.read())
+                    content = fp.read()
+                    if hasattr(self.storage.client, 'des'):
+                        content = self.storage.client.des.encrypt(content)
+                    
+                    md5 = self.calc_md5(content)
                     
                     entry = FileEntry(abs_filename, timestamp, md5)
                     
@@ -242,7 +246,7 @@ class SyncHandler(threading.Thread):
             return
         
         self.sync()        
-        if self.loop and not self.stopped:
+        while self.loop and not self.stopped:
             time.sleep(self.sec)
             self.sync()
         
@@ -282,8 +286,8 @@ class S3SyncHandler(SyncHandler):
     def _upload(self, f, local_files_tm, cloud_files_tm):
         entry = local_files_tm[f]
         filename, timestamp = entry.path, entry.timestamp
-        f = f.decode('utf-8').encode('raw-unicode-escape')
-        cloud_path = self.local_to_cloud(f, timestamp)
+        f_ = f.decode('utf-8').encode('raw-unicode-escape')
+        cloud_path = self.local_to_cloud(f_, timestamp)
         self.storage.upload(cloud_path, filename)
         
         if self.log:

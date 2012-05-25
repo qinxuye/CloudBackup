@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>393</width>
-    <height>223</height>
+    <width>390</width>
+    <height>272</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <x>40</x>
      <y>30</y>
      <width>311</width>
-     <height>101</height>
+     <height>182</height>
     </rect>
    </property>
    <layout class="QFormLayout" name="vFormLayout">
@@ -59,13 +59,27 @@
       </property>
      </widget>
     </item>
+    <item row="3" column="0">
+     <widget class="QCheckBox" name="tvencrypt">
+      <property name="text">
+       <string>是否加密</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QCheckBox" name="tvisweibo">
+      <property name="text">
+       <string>新浪微博用户</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QWidget" name="gridLayoutWidget">
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>160</y>
+     <y>220</y>
      <width>311</width>
      <height>39</height>
     </rect>

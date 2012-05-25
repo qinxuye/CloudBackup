@@ -76,7 +76,11 @@
      </widget>
     </item>
     <item row="0" column="1">
-     <widget class="QLineEdit" name="tsrec"/>
+     <widget class="QLineEdit" name="tsrec">
+      <property name="toolTip">
+       <string>多个邮件之间用逗号隔开</string>
+      </property>
+     </widget>
     </item>
     <item row="1" column="0">
      <widget class="QLabel" name="lstopic">
@@ -86,7 +90,11 @@
      </widget>
     </item>
     <item row="1" column="1">
-     <widget class="QLineEdit" name="tstopic"/>
+     <widget class="QLineEdit" name="tstopic">
+      <property name="text">
+       <string>通过CloudBackup分享文件</string>
+      </property>
+     </widget>
     </item>
    </layout>
   </widget>
