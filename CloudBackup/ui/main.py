@@ -436,7 +436,10 @@ class UI(QtGui.QMainWindow):
         self.vshare.ui.setupUi(self.vshare)
         
         storage = self.vdisk_handler.storage
-        sharepath = storage.share(self.vdisk_file_path)
+        try:
+            sharepath = storage.share(self.vdisk_file_path)
+        except VdiskError, e:
+            self.alert(e.msg)
         self.vshare.ui.textareav.setText(QtCore.QString(
             u'微盘用户%s通过邮件向你分享文件“%s”，下载地址：%s' % \
             (self.vdisk_user, self.vdisk_file_name, sharepath))
@@ -461,8 +464,8 @@ class UI(QtGui.QMainWindow):
             receivers = str(self.vshare.ui.tvrec.text())
             receivers = receivers.replace('，', ',').split(',')
             
-            email = CloudBackup.mail.send_mail(receivers,str(self.vshare.ui.tvtopic.text()),
-                                               str(self.vshare.ui.textareav.toPlainText()))
+            email = CloudBackup.mail.send_mail(receivers, unicode(self.vshare.ui.tvtopic.text()).encode('utf-8'),
+                                               unicode(self.vshare.ui.textareav.toPlainText()).encode('utf-8'))
             if email:
                 self.vshare.close()
                 self.alert(u'发送成功！')
@@ -504,7 +507,7 @@ class UI(QtGui.QMainWindow):
                 QtCore.QString(self.s3_info['local_folder'].decode('utf-8')))
             self.status_set(self.ui.button_s_submit, 
                             self.ui.lsuserstate, 
-                            "Hello, 亚马逊S3用户 %s" % self.s3_display_name)
+                            "Hello, Amazon S3用户 %s" % self.s3_display_name)
         else:
             self.env.remove_s3_info()
             self.s3_info = None
@@ -572,7 +575,7 @@ class UI(QtGui.QMainWindow):
         if success:
             self.status_set(self.ui.button_s_submit, 
                             self.ui.lsuserstate, 
-                            "Hello, 亚马逊S3用户 %s" % self.s3_display_name)
+                            "Hello, Amazon S3用户 %s" % self.s3_display_name)
             self.slogin.close()
         else:
             self.alert('登录失败！')
@@ -665,7 +668,7 @@ class UI(QtGui.QMainWindow):
         storage = self.s3_handler.storage
         sharepath = storage.share(s3_file_path)
         self.sshare.ui.textareas.setText(QtCore.QString(
-            u'亚马逊S3用户%s通过邮件向你分享文件“%s”，下载地址：%s' % \
+            u'Amazon S3用户%s通过邮件向你分享文件“%s”，下载地址：%s' % \
             (self.s3_display_name, s3_file_name, sharepath))
         )
         
@@ -689,8 +692,8 @@ class UI(QtGui.QMainWindow):
             receivers = str(self.sshare.ui.tsrec.text())
             receivers = receivers.replace('，', ',').split(',')
             
-            email = CloudBackup.mail.send_mail(receivers,str(self.sshare.ui.tstopic.text()),
-                                               str(self.sshare.ui.textareas.toPlainText()))
+            email = CloudBackup.mail.send_mail(receivers, unicode(self.sshare.ui.tstopic.text()).encode('utf-8'),
+                                               unicode(self.sshare.ui.textareas.toPlainText()).encode('utf-8'))
             if email:
                 self.sshare.close()
                 self.alert("发送成功！")
@@ -906,8 +909,8 @@ class UI(QtGui.QMainWindow):
             receivers = str(self.gshare.ui.tgrec.text())
             receivers = receivers.replace('，', ',').split(',')
             
-            email = CloudBackup.mail.send_mail(receivers,str(self.gshare.ui.tgtopic.text()),
-                                               str(self.gshare.ui.textareag.toPlainText()))
+            email = CloudBackup.mail.send_mail(receivers,unicode(self.gshare.ui.tgtopic.text()).encode('utf-8'),
+                                               unicode(self.gshare.ui.textareag.toPlainText()).encode('utf-8'))
             if email:
                 self.gshare.close()
                 self.alert("发送成功！")

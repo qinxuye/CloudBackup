@@ -248,7 +248,7 @@
    </widget>
    <widget class="QWidget" name="s3tab">
     <attribute name="title">
-     <string>亚马逊S3</string>
+     <string>Amazon S3</string>
     </attribute>
     <widget class="QTabWidget" name="OpTabWidget_under_s3">
      <property name="geometry">

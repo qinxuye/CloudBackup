@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'CloudBackup.ui'
 #
-# Created: Sun May 27 00:11:51 2012
+# Created: Sun May 27 00:32:40 2012
 #      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -302,7 +302,7 @@ class Ui_CloudBackupUI(object):
         self.button_s_logflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
         self.OpTabWidget_under_s3.setTabText(self.OpTabWidget_under_s3.indexOf(self.logtab_under_s3), QtGui.QApplication.translate("CloudBackupUI", "用户日志", None, QtGui.QApplication.UnicodeUTF8))
         self.lsuserstate.setText(QtGui.QApplication.translate("CloudBackupUI", "用户登录状态", None, QtGui.QApplication.UnicodeUTF8))
-        self.CloudSelectTabWidget.setTabText(self.CloudSelectTabWidget.indexOf(self.s3tab), QtGui.QApplication.translate("CloudBackupUI", "亚马逊S3", None, QtGui.QApplication.UnicodeUTF8))
+        self.CloudSelectTabWidget.setTabText(self.CloudSelectTabWidget.indexOf(self.s3tab), QtGui.QApplication.translate("CloudBackupUI", "Amazon S3", None, QtGui.QApplication.UnicodeUTF8))
         self.lgdirpath.setText(QtGui.QApplication.translate("CloudBackupUI", "同步文件夹", None, QtGui.QApplication.UnicodeUTF8))
         self.button_g_reset.setText(QtGui.QApplication.translate("CloudBackupUI", "停止同步", None, QtGui.QApplication.UnicodeUTF8))
         self.button_g_submit.setText(QtGui.QApplication.translate("CloudBackupUI", "开始同步", None, QtGui.QApplication.UnicodeUTF8))
