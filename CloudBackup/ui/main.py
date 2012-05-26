@@ -7,14 +7,14 @@ Created on 2012-5-9
 @author: zhao yuan
 '''
 
-import sys
 import os
+import threading
+import time
 from PyQt4 import QtCore ,QtGui
 
 from CloudBackup.environment import Environment
 from CloudBackup.lib.errors import VdiskError, S3Error, GSError
 from CloudBackup.cloud import CloudFile, CloudFolder
-from CloudBackup.utils import get_icon_path
 import CloudBackup.mail
 
 import CloudBackup_UI
@@ -25,70 +25,125 @@ import S3Share_UI
 import GoogleCloudLogin_UI
 import GoogleCloudShare_UI
 
-
-
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
     _fromUtf8 = lambda s: s
     
-class Start(QtGui.QMainWindow):
-
+class CloudBrowserFlushThread(threading.Thread):
+    def __init__(self, base_ui, browser_ui, handler):
+        super(CloudBrowserFlushThread, self).__init__()
+        self.base_ui = base_ui
+        self.ui = browser_ui
+        self.handler = handler
+        
+        self.stopped = False
+        self.ensure_quit = False
+    
+    def generate_cloud_tree(self, path='', parent=None):
+        """
+        show the files that  synchronized with the cloud
+        """
+        
+        if self.handler is None or self.stopped:
+            return
+        
+        try:
+            for itm in self.handler.list_cloud(path):
+                if itm is None or self.stopped: return
+                
+                name = QtCore.QString(itm.path.split('/')[-1].decode('utf-8'))
+                widget_itm = QtGui.QTreeWidgetItem(QtCore.QStringList(name))
+                
+                if isinstance(itm, CloudFile):
+                    widget_itm.setToolTip(0, QtCore.QString(itm.cloud_path))            
+                    parent.addChild(widget_itm)
+                elif isinstance(itm, CloudFolder):
+                    parent.addChild(widget_itm)
+                    self.generate_cloud_tree(itm.cloud_path, widget_itm)
+        except VdiskError, e:
+            if e.err_no == 900:
+                time.sleep(10)
+            else:
+                raise e
+    
+    def cloud_browser_flush(self):
+        self.ui.clear()
+        root = self.base_ui.add_root_to_cloud_browser(self.ui)
+        self.generate_cloud_tree(parent=root)
+        self.ensure_quit = True
+    
+    def run(self):
+        self.cloud_browser_flush()
+        
+    def stop(self):
+        self.stopped = True
+        
+class LogFlushThread(threading.Thread):
+    def __init__(self, ui, handler):
+        super(LogFlushThread, self).__init__()
+        self.ui = ui
+        self.handler = handler
+        
+        self.stopped = False
+        
+    def show_logs(self):
+        if self.handler is None or self.stopped:
+            return
+        
+        self.ui.clear()
+        
+        for log in self.handler.log_obj.get_logs():
+            if log is None or self.stopped: return
+            
+            splits = log.split(' ', 2)
+            
+            if len(splits) == 3:
+                stime = ' '.join((splits[i] for i in range(2)))
+                saction = splits[2]
+                
+                log =  QtGui.QTreeWidgetItem()
+                log.setText(0, QtCore.QString(stime))
+                log.setText(1, QtCore.QString(saction.decode('utf-8')))
+            
+                self.ui.addTopLevelItem(log)
+                
+    def run(self):
+        self.show_logs()
+        
+    def stop(self):
+        self.stopped = True
+    
+class UI(QtGui.QMainWindow):
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self,parent)       
         self.ui = CloudBackup_UI.Ui_CloudBackupUI()
         self.ui.setupUi(self)
-        self.setWindowIcon(QtGui.QIcon(get_icon_path()))
         
         self.env = Environment()
         
-        vdisk_info = self.env.load_vdisk_info()
-        if vdisk_info is None:
-            self.vuserstate = False
-        else:
-            self.vdisk_user = vdisk_info['account']
-            self.vdisk_pwd = vdisk_info['password']
-            self.vuserstate = True
-            self.ui.tvdirpath.setText(
-                QtCore.QString(vdisk_info['local_folder'].decode('utf-8')))
-            is_weibo = vdisk_info['is_weibo']
-            encrypt = vdisk_info['encrypt']
-            self.vdisk_setup(self.vdisk_user, self.vdisk_pwd, is_weibo, encrypt)
-            self.ui.button_v_submit.setText(QtCore.QString(u'正在同步...'))
-            self.vdisk_set_userstate(vdisk_info['account'])
-            
-        s3_info = self.env.load_s3_info()
-        if s3_info is None:
-            self.suserstate = False
-        else:
-            self.s3_user = s3_info['access_key']
-            self.s3_pwd = s3_info['secret_access_key']
-            self.vuserstate = True
-            self.ui.tsdirpath.setText(
-                QtCore.QString(s3_info['local_folder'].decode('utf-8')))
-            encrypt = s3_info['encrypt']
-            self.s3_setup(self.s3_user, self.s3_pwd, encrypt)
-            self.ui.button_s_submit.setText(QtCore.QString(u'正在同步...'))
-            self.s3_set_userstate()
-            
-        gs_info = self.env.load_gs_info()
-        if gs_info is None:
-            self.guserstate = False
-        else:
-            self.gs_user = gs_info['access_key']
-            self.gs_pwd = gs_info['secret_access_key']
-            self.gs_pid = gs_info['project_id']
-            self.guserstate = True
-            self.ui.tgdirpath.setText(
-                QtCore.QString(gs_info['local_folder'].decode('utf-8')))
-            encrypt = gs_info['encrypt']
-            self.gs_setup(self.gs_user, self.gs_pwd, self.gs_pid, encrypt)
-            self.ui.button_g_submit.setText(QtCore.QString(u'正在同步...'))
-            self.gs_set_userstate()
+        self.vdisk_handler = None
+        self.s3_handler = None
+        self.gs_handler = None
+        
+        self.vdisk_info = self.env.load_vdisk_info()
+        self.s3_info = self.env.load_s3_info()
+        self.gs_info = self.env.load_gs_info()
+        
+        self.vdisk_cloud_browser_thread = None
+        self.vdisk_log_thread = None
+        self.s3_cloud_browser_thread = None
+        self.s3_log_thread = None
+        self.gs_cloud_browser_thread = None
+        self.gs_log_thread = None
+        
+        self.vdisk_init()
+        self.s3_init()
+        self.gs_init()
         
         # register the button function under the VDisk syn file-dir
         QtCore.QObject.connect(self.ui.button_v_dir, QtCore.SIGNAL("clicked()"),
-                               self.vdisk_syn_dir)
+                               self.set_sync_path(self.ui.tvdirpath))
         
         QtCore.QObject.connect(self.ui.button_v_submit, QtCore.SIGNAL("clicked()"),
                                self.vdisk_dir_submit)
@@ -107,7 +162,7 @@ class Start(QtGui.QMainWindow):
         
         # register the button function under the S3 syn file-dir
         QtCore.QObject.connect(self.ui.button_s_dir, QtCore.SIGNAL("clicked()"),
-                               self.s3_syn_dir)
+                               self.set_sync_path(self.ui.tsdirpath))
         
         QtCore.QObject.connect(self.ui.button_s_submit, QtCore.SIGNAL("clicked()"),
                                self.s3_dir_submit)
@@ -127,7 +182,7 @@ class Start(QtGui.QMainWindow):
         
         # register the button function under the googlecloud syn file-dir
         QtCore.QObject.connect(self.ui.button_g_dir, QtCore.SIGNAL("clicked()"),
-                               self.gs_syn_dir)
+                               self.set_sync_path(self.ui.tgdirpath))
         
         QtCore.QObject.connect(self.ui.button_g_submit, QtCore.SIGNAL("clicked()"),
                                self.gs_dir_submit)
@@ -143,12 +198,18 @@ class Start(QtGui.QMainWindow):
         
         QtCore.QObject.connect(self.ui.button_g_logflush, QtCore.SIGNAL("clicked()"),
                                self.gs_log_flush)
+        
+    def get_holder(self, key, encrypt=False):
+        if encrypt:
+            holder = 'cldbkp_%s_encrypt' % str(key)
+        else:
+            holder = 'cldbkp_%s' % str(key)
+        return holder.lower()
     
-    def closeEvent(self, event): 
-        self.env.stop_vdisk(clear_info=False)
-        self.env.stop_s3(clear_info=False)
-        self.env.stop_gs(clear_info=False)
-        event.accept()    
+    def get_encrypt_code(self, key):
+        if len(key) >= 8:
+            return key[:8]
+        return key + '*' * (8 - len(key))
         
     def alert(self, msg):
         if isinstance(msg, str):
@@ -159,13 +220,17 @@ class Start(QtGui.QMainWindow):
         errorbox.setWindowTitle(QtCore.QString(u"需要提醒您："))
         errorbox.exec_()
         
-    def vdisk_reset_init_state(self):
-        self.ui.button_v_submit.setText(QtCore.QString(u'开始同步'))
-        QtCore.QObject.connect(self.ui.button_v_submit, QtCore.SIGNAL("clicked()"),
-                               self.vdisk_dir_submit)
-        self.ui.lvuserstate.setText(QtCore.QString(u'用户登录状态'))
+    def status_set(self, button, status_label, welcome_info):
+        button.setText(QtCore.QString(u'正在同步...'))
+        if isinstance(welcome_info, str):
+            welcome_info = welcome_info.decode('utf-8')
+        status_label.setText(QtCore.QString(welcome_info))
+        
+    def status_reset(self, button, status_label):
+        button.setText(QtCore.QString(u'开始同步'))
+        status_label.setText(QtCore.QString(u'用户登录状态'))
             
-    def file_dir(self):
+    def choose_dir(self):
         """
         provide a dialog for the user to get the folder
         """  
@@ -174,6 +239,20 @@ class Start(QtGui.QMainWindow):
         filedir = fd.getExistingDirectory(parent=None, caption="File Dir")
                 
         return filedir
+    
+    def set_sync_path(self, ui):
+        def _action():
+            dir_ = self.choose_dir()
+            ui.setText(dir_)
+        return _action
+    
+    def add_root_to_cloud_browser(self, ui):
+        value = QtCore.QString(u'根目录')
+        stringlist = QtCore.QStringList(value)
+        root = QtGui.QTreeWidgetItem(stringlist)
+        ui.addTopLevelItem(root)
+        
+        return root
     
     def get_cloud_path(self, tree):
         '''
@@ -189,14 +268,21 @@ class Start(QtGui.QMainWindow):
         except IndexError,e:
             self.alert(u'请选择要分享的文件！')
             return
-    
-    def vdisk_syn_dir(self):
-        """
-        select a syn folder
-        """
         
-        filedir = self.file_dir()
-        self.ui.tvdirpath.setText(filedir)
+    def vdisk_init(self):
+        if self.vdisk_info is None:
+            return
+        
+        success = self.vdisk_setup(**self.vdisk_info)
+        if success:
+            self.ui.tvdirpath.setText(
+                QtCore.QString(self.vdisk_info['local_folder'].decode('utf-8')))
+            self.status_set(self.ui.button_v_submit, 
+                            self.ui.lvuserstate, 
+                            "Hello, 微盘用户 %s" % self.vdisk_info['account'])
+        else:
+            self.env.remove_vdisk_info()
+            self.vdisk_info = None
         
     def vdisk_dir_reset(self):
         """
@@ -204,11 +290,18 @@ class Start(QtGui.QMainWindow):
         """
         
         self.ui.tvdirpath.clear()
+        
+        if self.vdisk_cloud_browser_thread:
+            self.vdisk_cloud_browser_thread.stop()
+        if self.vdisk_log_thread:
+            self.vdisk_log_thread.stop()
         self.ui.VtreeWidget.clear()
-        self.ui.VlogTreeWidget.clear() 
+        self.ui.VlogTreeWidget.clear()
+         
         self.env.stop_vdisk()
-        self.vdisk_reset_init_state()
-        self.vuserstate = False
+        self.vdisk_info = None
+        self.status_reset(self.ui.button_v_submit, 
+                          self.ui.lvuserstate)
         
     def vdisk_dir_submit(self):
         """
@@ -222,27 +315,23 @@ class Start(QtGui.QMainWindow):
             self.alert(u"你所设置的路径不存在！")
             return
         
-        if self.vuserstate == False:
-           
+        if not self.vdisk_info:
             self.vlogin = QtGui.QDialog()
             self.vlogin.ui = VDiskLogin_UI.Ui_VDiskCloudLoginUI()
             self.vlogin.ui.setupUi(self.vlogin)
-            
-            self.ui.button_v_submit.setText(QtCore.QString(u'正在同步...'))
             
             QtCore.QObject.connect(self.vlogin.ui.button_submit, QtCore.SIGNAL("clicked()"),
                                self.vdisk_login_submit)
             QtCore.QObject.connect(self.vlogin.ui.button_reset, QtCore.SIGNAL("clicked()"),
                                self.vdisk_login_reset)
             
-            
             self.vlogin.exec_()
         else:
-            #self.vdisk_dir_reset()
-            vdisk_info = self.env.load_vdisk_info()
-            args = tuple([vdisk_info[k] for k in 
-                    ('account', 'password', 'is_weibo', 'encrypt', 'encrypt_code')])
-            self.vdisk_setup(*args)
+            info = dict(self.vdisk_info)
+            info['local_folder'] = str(self.ui.tvdirpath.text())
+            success = self.vdisk_setup(**info)
+            if not success:
+                self.alert('登录失败！')
             
     def vdisk_login_submit(self):
         """
@@ -253,126 +342,63 @@ class Start(QtGui.QMainWindow):
         pwd = str(self.vlogin.ui.tvpwd.text())
         is_weibo = self.vlogin.ui.tvisweibo.isChecked()
         encrypt = self.vlogin.ui.tvencrypt.isChecked()
+        local_folder = str(self.ui.tvdirpath.text())
         
-        success = self.vdisk_setup(user, pwd, is_weibo, encrypt)
+        success = self.vdisk_setup(user, pwd, local_folder, is_weibo, encrypt)
         if success:
-            self.vdisk_user = user
-            self.vdisk_pwd = pwd
-            self.vdisk_set_userstate(user)
-                   
+            self.status_set(self.ui.button_v_submit, 
+                            self.ui.lvuserstate, 
+                            "Hello, 微盘用户 %s" % self.vdisk_info['account'])
             self.vlogin.close()
+        else:
+            self.alert('登录失败！')
         
-    def vdisk_set_userstate(self, user):
-        self.ui.lvuserstate.setText(
-            QtCore.QString(("Hello, 微盘用户 %s" % user).decode('utf-8')))
-        
-        
-    def vdisk_setup(self, user, pwd, is_weibo=False, encrypt=False, encrypt_code=None):     
+    def vdisk_setup(self, account, password, local_folder,
+                    is_weibo=False, encrypt=False, encrypt_code=None, **kwargs):     
         """
         use the info of the cloud submitted to setup the cloud storage syn folder 
         """
         
         try:
-            if len(str(self.ui.tvdirpath.text())) == 0:
-                self.alert(u"同步文件夹不能为空！")
-                return
+            args = locals()
+            del args['self']
             
-            local_folder = str(self.ui.tvdirpath.text())
-            
-            vdisk_info = self.env.load_vdisk_info()
             force_stop = False
-            if vdisk_info is not None:
-                for k, v in {'account': user, 
-                             'password': pwd, 
-                             'local_folder': local_folder,
-                             'is_weibo': is_weibo,
-                             'encrypt': encrypt,
-                             'encrypt_code': encrypt_code }.iteritems():
-                    if k not in vdisk_info or vdisk_info[k] != v:
+            if self.vdisk_info is not None:
+                for k, v in args.iteritems():
+                    if k in self.vdisk_info and self.vdisk_info[k] != v:
                         force_stop = True
                         break
             
-            if encrypt:
-                holder = 'cldbkp_%s_encrypt' % str(user)
-                if not encrypt_code:
-                    if len(self.vdisk_user) >= 8:
-                        encrypt_code = self.vdisk_user[:8]
-                    else:
-                        encrypt_code = self.vdisk_user + '*' * (8 - len(self.vdisk_user))
-            else:
-                holder = 'cldbkp_%s' % str(user)
+            holder = self.get_holder(account)
+            encrypt_code = self.get_encrypt_code(account) if encrypt else None
             
             self.vdisk_handler = self.env.setup_vdisk(
-                str(user), str(pwd), local_folder, holder,
+                account, password, local_folder, holder,
                 is_weibo=is_weibo, encrypt=encrypt, encrypt_code=encrypt_code, 
                 force_stop=force_stop)
-            self.vuserstate = True      
-            self.vdisk_user = str(user)
             
-            self.ui.VtreeWidget.clear()
-            value = QtCore.QString(QtGui.QApplication.translate("Directory", "根目录", None, QtGui.QApplication.UnicodeUTF8))
-            stringlist = QtCore.QStringList(value)
-            root = QtGui.QTreeWidgetItem(stringlist)
-            self.ui.VtreeWidget.addTopLevelItem(root)
+            if force_stop or self.vdisk_info is None:
+                self.vdisk_info = args
             
-            self.vdisk_show_files(par=root)       
+            self.vdisk_cloud_flush()
             self.vdisk_show_logs()
             
             return True
         except VdiskError:
-            self.alert('登录失败！')
-            return False
-
-    
-    def vdisk_show_files(self, path='', par=None):
-        """
-        show the files that  synchronized with the cloud
-        """
-        
-        if self.vdisk_handler != None :
-            
-            for theone in self.vdisk_handler.list_cloud(path):
-                
-                if theone is None: return
-                
-                if isinstance(theone, CloudFile):
-                    filename = theone.path.split('/')[-1]
-                    value = QtCore.QString(filename.decode('utf-8'))
-                    stringlist = QtCore.QStringList(value)
-                    thefile =  QtGui.QTreeWidgetItem(stringlist)  
-                    thefile.setToolTip(0, QtCore.QString(theone.cloud_path))            
-                    par.addChild(thefile)
-                        
-                elif isinstance(theone, CloudFolder):
-                    foldername = theone.path.split('/')[-1]
-                    value = QtCore.QString(foldername.decode('utf-8'))
-                    stringlist = QtCore.QStringList(value)
-                    folder =  QtGui.QTreeWidgetItem(stringlist)
-                    par.addChild(folder)
-                    self.vdisk_show_files(foldername, folder)              
+            return False              
                     
     def vdisk_show_logs(self):
         """
         show the logs about files that synchronized with the cloud
         """
         
-        self.ui.VlogTreeWidget.clear()
-        
-        for log in self.vdisk_handler.log_obj.get_logs():
+        if self.vdisk_log_thread:
+            self.vdisk_log_thread.stop()
             
-            if log is None: return
-            
-            splits = log.split(' ', 2)
-            
-            if len(splits) == 3:
-                stime = ' '.join((splits[i] for i in range(2)))
-                saction = splits[2]
-                
-                log =  QtGui.QTreeWidgetItem()
-                log.setText(0, QtCore.QString(stime))
-                log.setText(1, QtCore.QString(saction.decode('utf-8')))
-            
-                self.ui.VlogTreeWidget.addTopLevelItem(log)
+        self.vdisk_log_thread = LogFlushThread(self.ui.VlogTreeWidget, self.vdisk_handler)
+        self.vdisk_log_thread.setDaemon(True)
+        self.vdisk_log_thread.start()
     
     def vdisk_login_reset(self):
         """
@@ -386,14 +412,13 @@ class Start(QtGui.QMainWindow):
         '''
         Flush the cloud fiels.
         '''
-        self.ui.VtreeWidget.clear()
+        if self.vdisk_cloud_browser_thread:
+            self.vdisk_cloud_browser_thread.stop()
         
-        value = QtCore.QString(QtGui.QApplication.translate("Directory", "根目录", None, QtGui.QApplication.UnicodeUTF8))
-        stringlist = QtCore.QStringList(value)
-        root = QtGui.QTreeWidgetItem(stringlist)
-        self.ui.VtreeWidget.addTopLevelItem(root)
-        
-        self.vdisk_show_files(par=root)       
+        self.vdisk_cloud_browser_thread = CloudBrowserFlushThread(
+            self, self.ui.VtreeWidget, self.vdisk_handler)
+        self.vdisk_cloud_browser_thread.setDaemon(True)
+        self.vdisk_cloud_browser_thread.start()
         
     def vdisk_file_share(self):
         """
@@ -423,8 +448,7 @@ class Start(QtGui.QMainWindow):
                                self.vdisk_share_reset)
         QtCore.QObject.connect(self.vshare.ui.button_exit, QtCore.SIGNAL("clicked()"),
                                self.vdisk_share_exit)
-            
-            
+        
         self.vshare.exec_()
         
     def vdisk_share_submit(self):
@@ -470,18 +494,20 @@ class Start(QtGui.QMainWindow):
         
         self.vdisk_show_logs()
         
-
-    """
-    the button action associated with the s3 syn file-dir
-    """ 
-    
-    def s3_syn_dir(self):
-        """
-        select a syn folder
-        """ 
+    def s3_init(self):
+        if self.s3_info is None:
+            return
         
-        filedir = self.file_dir()
-        self.ui.tsdirpath.setText(filedir)
+        success = self.s3_setup(**self.s3_info)
+        if success:
+            self.ui.tsdirpath.setText(
+                QtCore.QString(self.s3_info['local_folder'].decode('utf-8')))
+            self.status_set(self.ui.button_s_submit, 
+                            self.ui.lsuserstate, 
+                            "Hello, 亚马逊S3用户 %s" % self.s3_display_name)
+        else:
+            self.env.remove_s3_info()
+            self.s3_info = None
     
     def s3_dir_reset(self):
         """
@@ -489,7 +515,18 @@ class Start(QtGui.QMainWindow):
         """
         
         self.ui.tsdirpath.clear()
+        
+        if self.s3_cloud_browser_thread:
+            self.s3_cloud_browser_thread.stop()
+        if self.s3_log_thread:
+            self.s3_log_thread.stop()
+        self.ui.StreeWidget.clear()
+        self.ui.SlogTreeWidget.clear()
+         
         self.env.stop_s3()
+        self.s3_info = None
+        self.status_reset(self.ui.button_s_submit, 
+                          self.ui.lsuserstate)
            
     def s3_dir_submit(self):
         """
@@ -503,152 +540,91 @@ class Start(QtGui.QMainWindow):
             self.alert(u"你所设置的路径不存在！")
             return
         
-        if self.suserstate == False:
-           
+        if not self.s3_info:
             self.slogin = QtGui.QDialog()
             self.slogin.ui = S3Login_UI.Ui_S3CloudLoginUI()
             self.slogin.ui.setupUi(self.slogin)
-            
-            self.ui.button_v_submit.setText(QtCore.QString(u'正在同步...'))
             
             QtCore.QObject.connect(self.slogin.ui.button_submit, QtCore.SIGNAL("clicked()"),
                                self.s3_login_submit)
             QtCore.QObject.connect(self.slogin.ui.button_reset, QtCore.SIGNAL("clicked()"),
                                self.s3_login_reset)
             
-            
             self.slogin.exec_()
         else:
-            s3_info = self.env.load_s3_info()
-            args = tuple([s3_info[k] for k in 
-                    ('access_key', 'secret_access_key', 'encrypt', 'encrypt_code')])
-            self.s3_setup(*args)
-    
-    def s3_set_userstate(self):
-        self.ui.lsuserstate.setText(
-            QtCore.QString(("Hello, 亚马逊S3用户").decode('utf-8')))
+            info = dict(self.s3_info)
+            info['local_folder'] = str(self.ui.tsdirpath.text())
+            success = self.s3_setup(**info)
+            if not success:
+                self.alert('登录失败！')
            
     def s3_login_submit(self):
         """
         submit the cloud info to the cloud , show the files and the logs that  synchronized with the cloud
         """
         
-        user = self.slogin.ui.ts_access_key.text()
-        pwd = self.slogin.ui.ts_secret_access_key.text()
+        access_key = str(self.slogin.ui.ts_access_key.text())
+        secret_access_key = str(self.slogin.ui.ts_secret_access_key.text())
+        local_folder = str(self.ui.tsdirpath.text())
         encrypt = self.slogin.ui.lsencrypt.isChecked()
-    
-        success = self.s3_setup(user, pwd, encrypt)
+        
+        success = self.s3_setup(access_key, secret_access_key, local_folder, encrypt)
         if success:
-            self.s3_user = user
-            self.s3_pwd = pwd
-            self.s3_set_userstate()
-            
+            self.status_set(self.ui.button_s_submit, 
+                            self.ui.lsuserstate, 
+                            "Hello, 亚马逊S3用户 %s" % self.s3_display_name)
             self.slogin.close()
+        else:
+            self.alert('登录失败！')
     
-    def s3_setup(self, user, pwd, encrypt=False, encrypt_code=None):   
+    def s3_setup(self, access_key, secret_access_key, local_folder, 
+                 encrypt=False, encrypt_code=None, **kwargs):   
         """
         use the info of the cloud submitted to setup the cloud storage syn folder 
         """
         
         try:
+            args = locals()
+            del args['self']
             
-            if len(str(self.ui.tsdirpath.text())) == 0:
-                self.alert(u"同步文件夹不能为空！")
-                return
-            
-            local_folder = str(self.ui.tsdirpath.text())
-            
-            s3_info = self.env.load_s3_info()
             force_stop = False
-            if s3_info is not None:
-                for k, v in {'access_key': user, 
-                             'secret_access_key': pwd, 
-                             'local_folder': local_folder,
-                             'encrypt': encrypt,
-                             'encrypt_code': encrypt_code }.iteritems():
-                    if k not in s3_info or s3_info[k] != v:
+            if self.s3_info is not None:
+                for k, v in args.iteritems():
+                    if k in self.s3_info and self.s3_info[k] != v:
                         force_stop = True
                         break
             
-            if encrypt:
-                holder = 'cldbkp_%s_encrypt' % str(user)
-                if not encrypt_code:
-                    if len(self.s3_user) >= 8:
-                        encrypt_code = self.s3_user[:8]
-                    else:
-                        encrypt_code = self.s3_user + '*' * (8 - len(self.s3_user))
-            else:
-                holder = 'cldbkp_%s' % str(user)
-            holder = holder.lower()
+            holder = self.get_holder(access_key)
+            encrypt_code = self.get_encrypt_code(access_key) if encrypt else None
             
             self.s3_handler = self.env.setup_s3(
-                str(user), str(pwd), local_folder, holder,
-                encrypt=encrypt, encrypt_code=encrypt_code, force_stop=force_stop)
-            self.suserstate = True              
+                access_key, secret_access_key, local_folder, holder,
+                encrypt=encrypt, encrypt_code=encrypt_code, force_stop=force_stop)          
             
-            self.ui.StreeWidget.clear()
-            value = QtCore.QString(QtGui.QApplication.translate("Directory", "根目录", None, QtGui.QApplication.UnicodeUTF8))
-            stringlist = QtCore.QStringList(value)
-            root = QtGui.QTreeWidgetItem(stringlist)
-            self.ui.StreeWidget.addTopLevelItem(root)
+            if force_stop or self.s3_info is None:
+                self.s3_info = args
             
-            self.s3_show_files(par=root)     
+            self.s3_cloud_flush()     
             self.s3_show_logs()
+            
+            self.s3_display_name = self.s3_handler.storage.client.list_buckets()[0].display_name
             
             return True
             
         except S3Error:
-            self.alert('登录失败！')
             return False
-        
-    def s3_show_files(self, path='', par=None):
-        """
-        show the files that  synchronized with the cloud
-        """
-        
-        if self.s3_handler != None :
-            
-            for theone in self.s3_handler.list_cloud(path):
-                if theone is None: return
-                
-                if isinstance(theone, CloudFile):
-                    filename = theone.path.split('/')[-1]
-                    value = QtCore.QString(filename.decode('utf-8'))
-                    stringlist = QtCore.QStringList(value)
-                    thefile =  QtGui.QTreeWidgetItem(stringlist)
-                    thefile.setToolTip(0, QtCore.QString(theone.cloud_path))        
-                    par.addChild(thefile)
-                        
-                elif isinstance(theone, CloudFolder):
-                    foldername = theone.path.split('/')[-1]
-                    value = QtCore.QString(foldername.decode('utf-8'))
-                    stringlist = QtCore.QStringList(value)
-                    folder =  QtGui.QTreeWidgetItem(stringlist)
-                    par.addChild(folder)
-                    self.s3_show_files(foldername,folder)
                 
     def s3_show_logs(self):
         """
         show the logs about files that synchronized with the cloud
         """
         
-        self.ui.SlogTreeWidget.clear()
-        
-        for log in self.s3_handler.log_obj.get_logs():
+        if self.s3_log_thread:
+            self.s3_log_thread.stop()
             
-            if log is None : return
-            
-            splits = log.split(' ', 2)
-            
-            if len(splits) == 3:
-                stime = ' '.join((splits[i] for i in range(2)))
-                saction = splits[2]
-                
-                log =  QtGui.QTreeWidgetItem()
-                log.setText(0, QtCore.QString(stime))
-                log.setText(1, QtCore.QString(saction.decode('utf-8')))
-            
-                self.ui.SlogTreeWidget.addTopLevelItem(log)
+        self.s3_log_thread = LogFlushThread(self.ui.SlogTreeWidget, self.s3_handler)
+        self.s3_log_thread.setDaemon(True)
+        self.s3_log_thread.start()
        
     def s3_login_reset(self):
         """
@@ -662,23 +638,23 @@ class Start(QtGui.QMainWindow):
         '''
         Flush the cloud fiels.
         '''
-        self.ui.StreeWidget.clear()
         
-        value = QtCore.QString(QtGui.QApplication.translate("Directory", "根目录", None, QtGui.QApplication.UnicodeUTF8))
-        stringlist = QtCore.QStringList(value)
-        root = QtGui.QTreeWidgetItem(stringlist)
-        self.ui.StreeWidget.addTopLevelItem(root)
+        if self.s3_cloud_browser_thread:
+            self.s3_cloud_browser_thread.stop()
         
-        self.s3_show_files(par=root)       
+        self.s3_cloud_browser_thread = CloudBrowserFlushThread(
+            self, self.ui.StreeWidget, self.s3_handler)
+        self.s3_cloud_browser_thread.setDaemon(True)
+        self.s3_cloud_browser_thread.start()
     
     def s3_file_share(self):
         """
         share a syn file to others by email
         """
         
-        self.s3_file_path, self.s3_file_name = self.get_cloud_path(self.ui.StreeWidget)
+        s3_file_path, s3_file_name = self.get_cloud_path(self.ui.StreeWidget)
         
-        if self.s3_file_path is None or len(str(self.s3_file_path)) == 0: 
+        if s3_file_path is None or len(str(s3_file_path)) == 0: 
             self.alert('不支持文件夹分享，请选择文件')
             return
         
@@ -687,10 +663,10 @@ class Start(QtGui.QMainWindow):
         self.sshare.ui.setupUi(self.sshare)
         
         storage = self.s3_handler.storage
-        sharepath = storage.share(self.s3_file_path)
+        sharepath = storage.share(s3_file_path)
         self.sshare.ui.textareas.setText(QtCore.QString(
-            u'亚马逊S3用户（id: %s）通过邮件向你分享文件“%s”，下载地址：%s' % \
-            (self.s3_user, self.s3_file_name, sharepath))
+            u'亚马逊S3用户%s通过邮件向你分享文件“%s”，下载地址：%s' % \
+            (self.s3_display_name, s3_file_name, sharepath))
         )
         
         QtCore.QObject.connect(self.sshare.ui.button_submit, QtCore.SIGNAL("clicked()"),
@@ -746,18 +722,20 @@ class Start(QtGui.QMainWindow):
         
         self.s3_show_logs()
         
+    def gs_init(self):
+        if self.gs_info is None:
+            return
         
-    """
-    The button action associated with the googlecloud syn file-dir
-    """ 
-    
-    def gs_syn_dir(self):
-        """
-        select a syn folder
-        """
-         
-        filedir = self.file_dir()
-        self.ui.tgdirpath.setText(filedir)
+        success = self.gs_setup(**self.gs_info)
+        if success:
+            self.ui.tgdirpath.setText(
+                QtCore.QString(self.gs_info['local_folder'].decode('utf-8')))
+            self.status_set(self.ui.button_g_submit, 
+                            self.ui.lguserstate, 
+                            "Hello, Google云存储用户")
+        else:
+            self.env.remove_gs_info()
+            self.gs_info = None
         
     def gs_dir_reset(self):
         """
@@ -779,156 +757,91 @@ class Start(QtGui.QMainWindow):
             self.alert(u"你所设置的路径不存在！")
             return
         
-        if self.guserstate == False:
-           
+        if not self.gs_info:
             self.glogin = QtGui.QDialog()
             self.glogin.ui = GoogleCloudLogin_UI.Ui_GoogleCloudLoginUI()
             self.glogin.ui.setupUi(self.glogin)
-            
-            self.ui.button_v_submit.setText(QtCore.QString(u'正在同步...'))
             
             QtCore.QObject.connect(self.glogin.ui.button_submit, QtCore.SIGNAL("clicked()"),
                                self.gs_login_submit)
             QtCore.QObject.connect(self.glogin.ui.button_reset, QtCore.SIGNAL("clicked()"),
                                self.gs_login_reset)
             
-            
             self.glogin.exec_()
         else:
-            gs_info = self.env.load_gs_info()
-            args = tuple([gs_info[k] for k in 
-                    ('access_key', 'secret_access_key', 'project_id', 'encrypt', 'encrypt_code')])
-            self.gs_setup(*args)
-    
-    def gs_set_userstate(self):
-        self.ui.lguserstate.setText(
-            QtCore.QString(("Hello, Google云存储用户").decode('utf-8')))
+            info = dict(self.gs_info)
+            info['local_folder'] = str(self.ui.tgdirpath.text())
+            success = self.gs_setup(**info)
+            if not success:
+                self.alert('登录失败！')
     
     def gs_login_submit(self):
         """
         submit the cloud info to the cloud , show the files and the logs that  synchronized with the cloud
         """
         
-        user = self.glogin.ui.tg_access_key.text()
-        pwd = self.glogin.ui.tg_secret_access_key.text()
-        pid = self.glogin.ui.tg_project_id.text()
+        access_key = str(self.glogin.ui.tg_access_key.text())
+        secret_access_key  = str(self.glogin.ui.tg_secret_access_key.text())
+        project_id = str(self.glogin.ui.tg_project_id.text())
+        local_folder = str(self.ui.tgdirpath.text())
         encrypt = self.glogin.ui.tgencrypt.isChecked()
         
-        success = self.gs_setup(user, pwd, pid, encrypt)
+        success = self.gs_setup(access_key, secret_access_key, project_id, local_folder, encrypt)
         if success:
-            self.gs_user = user
-            self.gs_pwd = pwd
-            self.gs_set_userstate()
-            
+            self.status_set(self.ui.button_g_submit, 
+                            self.ui.lguserstate, 
+                            "Hello, Google云存储用户")
             self.glogin.close()
+        else:
+            self.alert('登录失败！')
     
-    def gs_setup(self, user, pwd ,pid, encrypt=False, encrypt_code=None):
+    def gs_setup(self, access_key, secret_access_key, project_id, local_folder,
+                 encrypt=False, encrypt_code=None, **kwargs):
         """
         use the info of the cloud submitted to setup the cloud storage syn folder 
         """
         
         try:
+            args = locals()
+            del args['self']
             
-            if len(str(self.ui.tgdirpath.text())) == 0:
-                self.alert(u"同步文件夹不能为空！")
-                return
-            
-            local_folder = str(self.ui.tgdirpath.text())
-            
-            gs_info = self.env.load_gs_info()
             force_stop = False
-            if gs_info is not None:
-                for k, v in {'access_key': user, 
-                             'secret_access_key': pwd, 
-                             'project_id': pid,
-                             'local_folder': local_folder,
-                             'encrypt': encrypt,
-                             'encrypt_code': encrypt_code }.iteritems():
-                    if k not in gs_info or gs_info[k] != v:
+            if self.gs_info is not None:
+                for k, v in args.iteritems():
+                    if k in self.gs_info and self.gs_info[k] != v:
                         force_stop = True
                         break
             
-            if encrypt:
-                holder = 'cldbkp_%s_encrypt' % str(user)
-                if not encrypt_code:
-                    if len(self.gs_user) >= 8:
-                        encrypt_code = self.gs_user[:8]
-                    else:
-                        encrypt_code = self.gs_user + '*' * (8 - len(self.gs_user))
-            else:
-                holder = 'cldbkp_%s' % str(user)
-            holder = holder.lower()
-                
+            holder = self.get_holder(access_key)
+            encrypt_code = self.get_encrypt_code(access_key) if encrypt else None
+            
             self.gs_handler = self.env.setup_gs(
-                str(user), str(pwd), str(pid), local_folder, holder,
-                encrypt=encrypt, encrypt_code=encrypt_code, force_stop=force_stop)
-            self.guserstate = True              
+                access_key, secret_access_key, project_id, local_folder, holder,
+                encrypt=encrypt, encrypt_code=encrypt_code, force_stop=force_stop)          
             
-            self.ui.GtreeWidget.clear()
-            value = QtCore.QString(QtGui.QApplication.translate("Directory", "根目录", None, QtGui.QApplication.UnicodeUTF8))
-            stringlist = QtCore.QStringList(value)
-            root = QtGui.QTreeWidgetItem(stringlist)
-            self.ui.GtreeWidget.addTopLevelItem(root)
+            if force_stop or self.gs_info is None:
+                self.gs_info = args
             
-            self.gs_show_files(par = root)          
+            self.gs_cloud_flush()    
             self.gs_show_logs()
             
             return True
-            
         except  GSError, e:
             
             self.alert('登录失败！')
             return False
-                  
-    def gs_show_files(self, path='', par=None):
-        """
-        show the files that  synchronized with the cloud
-        """ 
-        
-        if self.gs_handler != None :
-            
-            for theone in self.gs_handler.list_cloud(path):
-                
-                if theone is None: return
-
-                if isinstance(theone, CloudFile):
-                    filename = theone.path.split('/')[-1]
-                    value = QtCore.QString(filename.decode('utf-8'))
-                    stringlist = QtCore.QStringList(value)
-                    thefile =  QtGui.QTreeWidgetItem(stringlist)         
-                    thefile.setToolTip(0, QtCore.QString(theone.cloud_path))      
-                    par.addChild(thefile)
-                        
-                elif isinstance(theone, CloudFolder):
-                    foldername = theone.path.split('/')[-1]
-                    value = QtCore.QString(foldername.decode('utf-8'))
-                    stringlist = QtCore.QStringList(value)
-                    folder =  QtGui.QTreeWidgetItem(stringlist)
-                    par.addChild(folder)
-                    self.gs_show_files(foldername,folder)
                     
     def gs_show_logs(self):
         """
         show the logs about files that synchronized with the cloud
         """
         
-        self.ui.GlogTreeWidget.clear()
-        if self.gs_handler is None: return
-        
-        for log in self.gs_handler.log_obj.get_logs():
-            if log is None : return
-
-            splits = log.split(' ', 2)
+        if self.gs_log_thread:
+            self.gs_log_thread.stop()
             
-            if len(splits) == 3:
-                stime = ' '.join((splits[i] for i in range(2)))
-                saction = splits[2]
-                
-                log =  QtGui.QTreeWidgetItem()
-                log.setText(0, QtCore.QString(stime))
-                log.setText(1, QtCore.QString(saction.decode('utf-8')))
-            
-                self.ui.GlogTreeWidget.addTopLevelItem(log)
+        self.gs_log_thread = LogFlushThread(self.ui.GlogTreeWidget, self.gs_handler)
+        self.gs_log_thread.setDaemon(True)
+        self.gs_log_thread.start()
        
     def gs_login_reset(self):
         """
@@ -943,23 +856,23 @@ class Start(QtGui.QMainWindow):
         '''
         Flush the cloud fiels.
         '''
-        self.ui.GtreeWidget.clear()
         
-        value = QtCore.QString(QtGui.QApplication.translate("Directory", "根目录", None, QtGui.QApplication.UnicodeUTF8))
-        stringlist = QtCore.QStringList(value)
-        root = QtGui.QTreeWidgetItem(stringlist)
-        self.ui.GtreeWidget.addTopLevelItem(root)
+        if self.gs_cloud_browser_thread:
+            self.gs_cloud_browser_thread.stop()
         
-        self.gs_show_files(par=root)       
+        self.gs_cloud_browser_thread = CloudBrowserFlushThread(
+            self, self.ui.GtreeWidget, self.gs_handler)
+        self.gs_cloud_browser_thread.setDaemon(True)
+        self.gs_cloud_browser_thread.start()    
            
     def gs_file_share(self):
         """
         share a syn file to others by email
         """
         
-        self.gs_file_path, self.gs_file_name = self.get_cloud_path(self.ui.GtreeWidget)
+        gs_file_path, gs_file_name = self.get_cloud_path(self.ui.GtreeWidget)
         
-        if self.gs_file_path is None or len(str(self.gs_file_path)) == 0: 
+        if gs_file_path is None or len(str(gs_file_path)) == 0: 
             self.alert('不支持文件夹分享，请选择文件')
             return
         
@@ -968,10 +881,10 @@ class Start(QtGui.QMainWindow):
         self.gshare.ui.setupUi(self.gshare)
         
         storage = self.gs_handler.storage
-        sharepath = storage.share(self.gs_file_path)
+        sharepath = storage.share(gs_file_path)
         self.gshare.ui.textareag.setText(QtCore.QString(
             u'Google云存储用户（id: %s）通过邮件向你分享文件“%s”，下载地址：%s' % \
-            (self.gs_user, self.gs_file_name, sharepath))
+            (self.gs_info['access_key'], gs_file_name, sharepath))
         )
         
         QtCore.QObject.connect(self.gshare.ui.button_submit, QtCore.SIGNAL("clicked()"),
@@ -989,8 +902,7 @@ class Start(QtGui.QMainWindow):
         submit the info about the email
         """
         
-        if self.gs_handler != None:       
-            
+        if self.gs_handler != None:
             receivers = str(self.gshare.ui.tgrec.text())
             receivers = receivers.replace('，', ',').split(',')
             

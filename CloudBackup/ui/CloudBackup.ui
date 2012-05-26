@@ -185,44 +185,6 @@
       <attribute name="title">
        <string>用户日志</string>
       </attribute>
-      <widget class="QTreeWidget" name="VlogTreeWidget">
-       <property name="geometry">
-        <rect>
-         <x>20</x>
-         <y>21</y>
-         <width>581</width>
-         <height>291</height>
-        </rect>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>581</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>581</width>
-         <height>291</height>
-        </size>
-       </property>
-       <property name="autoScroll">
-        <bool>true</bool>
-       </property>
-       <property name="headerHidden">
-        <bool>false</bool>
-       </property>
-       <column>
-        <property name="text">
-         <string>时间</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>动作</string>
-        </property>
-       </column>
-      </widget>
       <widget class="QPushButton" name="button_v_logflush">
        <property name="geometry">
         <rect>
@@ -235,6 +197,29 @@
        <property name="text">
         <string>刷新</string>
        </property>
+      </widget>
+      <widget class="QTreeWidget" name="VlogTreeWidget">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>21</y>
+         <width>581</width>
+         <height>291</height>
+        </rect>
+       </property>
+       <property name="columnCount">
+        <number>2</number>
+       </property>
+       <column>
+        <property name="text">
+         <string>时间</string>
+        </property>
+       </column>
+       <column>
+        <property name="text">
+         <string>动作</string>
+        </property>
+       </column>
       </widget>
      </widget>
     </widget>

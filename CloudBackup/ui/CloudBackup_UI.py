@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'CloudBackup.ui'
 #
-# Created: Fri May 25 19:11:27 2012
+# Created: Sun May 27 00:11:51 2012
 #      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -85,16 +85,13 @@ class Ui_CloudBackupUI(object):
         self.OpTabWidget_under_vdisk.addTab(self.sharetab_under_vdisk, _fromUtf8(""))
         self.logtab_under_vdisk = QtGui.QWidget()
         self.logtab_under_vdisk.setObjectName(_fromUtf8("logtab_under_vdisk"))
-        self.VlogTreeWidget = QtGui.QTreeWidget(self.logtab_under_vdisk)
-        self.VlogTreeWidget.setGeometry(QtCore.QRect(20, 21, 581, 291))
-        self.VlogTreeWidget.setMinimumSize(QtCore.QSize(581, 0))
-        self.VlogTreeWidget.setMaximumSize(QtCore.QSize(581, 291))
-        self.VlogTreeWidget.setAutoScroll(True)
-        self.VlogTreeWidget.setHeaderHidden(False)
-        self.VlogTreeWidget.setObjectName(_fromUtf8("VlogTreeWidget"))
         self.button_v_logflush = QtGui.QPushButton(self.logtab_under_vdisk)
         self.button_v_logflush.setGeometry(QtCore.QRect(510, 320, 93, 28))
         self.button_v_logflush.setObjectName(_fromUtf8("button_v_logflush"))
+        self.VlogTreeWidget = QtGui.QTreeWidget(self.logtab_under_vdisk)
+        self.VlogTreeWidget.setGeometry(QtCore.QRect(20, 21, 581, 291))
+        self.VlogTreeWidget.setColumnCount(2)
+        self.VlogTreeWidget.setObjectName(_fromUtf8("VlogTreeWidget"))
         self.OpTabWidget_under_vdisk.addTab(self.logtab_under_vdisk, _fromUtf8(""))
         self.lvuserstate = QtGui.QLabel(self.vdisktab)
         self.lvuserstate.setGeometry(QtCore.QRect(370, 410, 271, 20))
@@ -286,9 +283,9 @@ class Ui_CloudBackupUI(object):
         self.button_v_share.setText(QtGui.QApplication.translate("CloudBackupUI", "用邮件分享", None, QtGui.QApplication.UnicodeUTF8))
         self.button_v_cloudflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
         self.OpTabWidget_under_vdisk.setTabText(self.OpTabWidget_under_vdisk.indexOf(self.sharetab_under_vdisk), QtGui.QApplication.translate("CloudBackupUI", "分享设定", None, QtGui.QApplication.UnicodeUTF8))
+        self.button_v_logflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
         self.VlogTreeWidget.headerItem().setText(0, QtGui.QApplication.translate("CloudBackupUI", "时间", None, QtGui.QApplication.UnicodeUTF8))
         self.VlogTreeWidget.headerItem().setText(1, QtGui.QApplication.translate("CloudBackupUI", "动作", None, QtGui.QApplication.UnicodeUTF8))
-        self.button_v_logflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
         self.OpTabWidget_under_vdisk.setTabText(self.OpTabWidget_under_vdisk.indexOf(self.logtab_under_vdisk), QtGui.QApplication.translate("CloudBackupUI", "用户日志", None, QtGui.QApplication.UnicodeUTF8))
         self.lvuserstate.setText(QtGui.QApplication.translate("CloudBackupUI", "用户登录状态", None, QtGui.QApplication.UnicodeUTF8))
         self.CloudSelectTabWidget.setTabText(self.CloudSelectTabWidget.indexOf(self.vdisktab), QtGui.QApplication.translate("CloudBackupUI", "微盘", None, QtGui.QApplication.UnicodeUTF8))

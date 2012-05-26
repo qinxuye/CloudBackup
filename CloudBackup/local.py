@@ -30,17 +30,38 @@ from cloud import Storage, S3Storage
 from utils import join_local_path, get_sys_encoding, get_info_path, ensure_folder_exsits
 from CloudBackup.log import Log
 from CloudBackup.lib.vdisk import VdiskClient
-from CloudBackup.lib.errors import VdiskError, CloudBackupLibError
+from CloudBackup.lib.errors import VdiskError, CloudBackupLibError, GSError, S3Error
 
 SPACE_REPLACE = '#$&'
 DEFAULT_SLEEP_MINUTS = 5
 DEFAULT_SLEEP_SECS = DEFAULT_SLEEP_MINUTS * 60
 
 class FileEntry(object):
-    def __init__(self, path, timestamp, md5):
+    def __init__(self, path, timestamp, md5, **kwargs):
         self.path = path
         self.timestamp = timestamp
         self.md5 = md5
+        for k, v in kwargs:
+            setattr(self, k, v)
+            
+        self.calc_md5 = lambda data: hashlib.md5(data).hexdigest()
+        
+    def get_md5(self):
+        if self.md5:
+            return self.md5
+        
+        if os.path.exists(self.path):
+            fp = open(self.path, 'rb')
+                
+            try:
+                content = fp.read()
+                if hasattr(self, 'encrypt_func'):
+                    content = self.encrypt_func(content)
+                
+                md5 = self.calc_md5(content)
+                return md5
+            finally:
+                fp.close()
         
 class VdiskRefreshToken(threading.Thread):
     stopped = False
@@ -55,10 +76,13 @@ class VdiskRefreshToken(threading.Thread):
     def stop(self):
         self.stopped = True
         
-    def run(self, sleep_minutes=10):
+    def run(self, sleep_minutes=10, sleep_interval=30):
+        count = 0
         while not self.stopped:
-            self.refresh_token()
-            time.sleep(sleep_minutes * 60)
+            if count == (sleep_minutes * 60 / sleep_interval):
+                self.refresh_token()
+            time.sleep(sleep_interval)
+            count += 1
 
 class SyncHandler(threading.Thread):
     stopped = False
@@ -139,6 +163,12 @@ class SyncHandler(threading.Thread):
             files[path] = FileEntry(f.path, timestamp, f.md5)
             
         return files
+    
+    def _is_folder_exclude(self, folder_name):
+        for name in folder_name.split(os.sep):
+            if name.startswith('.'):
+                return True
+        return False
             
     def _get_local_files(self):
         files = {}
@@ -147,6 +177,9 @@ class SyncHandler(threading.Thread):
                         else self.folder_name+os.sep
         
         for dirpath, dirnames, filenames in os.walk(self.folder_name):
+            if self._is_folder_exclude(dirpath):
+                continue
+            
             for filename in filenames:
                 if filename.startswith('.'):
                     continue
@@ -155,23 +188,17 @@ class SyncHandler(threading.Thread):
                 rel_path = abs_filename.split(folder_name, 1)[1]
                 rel_path = rel_path.decode(self.encoding).encode('utf-8')
                 timestamp = int(os.path.getmtime(abs_filename))
-                fp = open(abs_filename, 'rb')
                 
-                try:
-                    content = fp.read()
-                    if hasattr(self.storage.client, 'des'):
-                        content = self.storage.client.des.encrypt(content)
-                    
-                    md5 = self.calc_md5(content)
-                    
-                    entry = FileEntry(abs_filename, timestamp, md5)
-                    
-                    if os.sep == '/':
-                        files[rel_path] = entry
-                    else:
-                        files[rel_path.replace(os.sep, '/')] = entry
-                finally:
-                    fp.close()
+                if hasattr(self.storage.client, 'des'):
+                    func = self.storage.client.des.encrypt
+                    entry = FileEntry(abs_filename, timestamp, None, encrypt_func=func)
+                else:
+                    entry = FileEntry(abs_filename, timestamp, None)
+                
+                if os.sep == '/':
+                    files[rel_path] = entry
+                else:
+                    files[rel_path.replace(os.sep, '/')] = entry
                     
         return files
     
@@ -192,10 +219,13 @@ class SyncHandler(threading.Thread):
                         tries += 1
                     else:
                         raise e
+                except GSError, e:
+                    self.error_log.info('upload file %s happens an error.' % f)
+                    raise e
         _action()
                     
         if self.log:
-            self.log_obj.write('Upload file: %s' % f)
+            self.log_obj.write('上传了文件：%s' % f)
         
     def _download(self, f, local_files_tm, cloud_files_tm):
         filename = join_local_path(self.folder_name, 
@@ -208,7 +238,7 @@ class SyncHandler(threading.Thread):
         self.storage.download(cloud_path, filename)
         
         if self.log:
-            self.log_obj.write('Download file: %s' % f)
+            self.log_obj.write('下载了文件：%s' % f)
     
     def sync(self):
         try:
@@ -219,16 +249,19 @@ class SyncHandler(threading.Thread):
             cloud_files = set(cloud_files_tm.keys())
             
             for f in (local_files - cloud_files):
+                if self.stopped: return
                 self._upload(f, local_files_tm, cloud_files_tm)
                 
             for f in (cloud_files - local_files):
+                if self.stopped: return
                 self._download(f, local_files_tm, cloud_files_tm)
                 
             for f in (cloud_files & local_files):
+                if self.stopped: return
                 local_entry = local_files_tm[f]
                 cloud_entry = cloud_files_tm[f]
                 
-                if local_entry.md5 != cloud_entry.md5:
+                if local_entry.get_md5() != cloud_entry.get_md5():
                     if local_entry.timestamp < cloud_entry.timestamp:
                         self._download(f, local_files_tm, cloud_files_tm)
                     elif local_entry.timestamp > cloud_entry.timestamp:
@@ -288,7 +321,11 @@ class S3SyncHandler(SyncHandler):
         filename, timestamp = entry.path, entry.timestamp
         f_ = f.decode('utf-8').encode('raw-unicode-escape')
         cloud_path = self.local_to_cloud(f_, timestamp)
-        self.storage.upload(cloud_path, filename)
+        try:
+            self.storage.upload(cloud_path, filename)
+        except S3Error, e:
+            self.error_log.info('upload file %s happens an error.' % f)
+            raise e
         
         if self.log:
             self.log_obj.write('Upload file: %s' % f)

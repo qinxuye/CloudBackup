@@ -27,7 +27,8 @@ try:
 except ImportError:
     import pickle
 
-from CloudBackup.lib.vdisk import VdiskClient, CryptoVdiskClient
+# from CloudBackup.lib.vdisk import VdiskClient, CryptoVdiskClient
+from CloudBackup.client import VdiskClient, CryptoVdiskClient
 from CloudBackup.lib.s3 import S3Client, CryptoS3Client
 from CloudBackup.lib.gs import GSClient, CryptoGSClient
 from CloudBackup.lib.errors import VdiskError, S3Error, GSError
@@ -140,12 +141,14 @@ class Environment(object):
                 client = VdiskClient(VDISK_APP_KEY, VDISK_APP_SECRET)
                 client.auth(account, password, 'sinat' if is_weibo else 'local')
             self.vdisk_token_refresh = VdiskRefreshToken(client)
+            self.vdisk_token_refresh.setDaemon(True)
             self.vdisk_token_refresh.start()
                 
             storage = VdiskStorage(client, holder_name=holder)
             
             try:
                 handler = SyncHandler(storage, local_folder, sec=DEFAULT_SLEEP_SECS, log=log)
+                handler.setDaemon(True)
                 handler.start()
                 self.vdisk_handler = handler
                 
@@ -218,6 +221,7 @@ class Environment(object):
             
             try:
                 handler = S3SyncHandler(storage, local_folder, sec=DEFAULT_SLEEP_SECS, log=log)
+                handler.setDaemon(True)
                 handler.start()
                 self.s3_handler = handler
                 
@@ -286,6 +290,7 @@ class Environment(object):
             
             try:
                 handler = SyncHandler(storage, local_folder, sec=DEFAULT_SLEEP_SECS, log=log)
+                handler.setDaemon(True)
                 handler.start()
                 self.gs_handler = handler
                 

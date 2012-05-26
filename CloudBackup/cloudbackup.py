@@ -11,7 +11,7 @@ import os
 
 from PyQt4 import QtGui
 
-from CloudBackup.ui.main import Start
+from CloudBackup.ui.main import UI
 from CloudBackup.lib.errors import CloudBackupLibError
 from CloudBackup.errors import CloudBackupError
 from CloudBackup.log import Log
@@ -19,7 +19,7 @@ from CloudBackup.log import Log
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     try:
-        myapp = Start()
+        myapp = UI()
         myapp.show()
         sys.exit(app.exec_())
     except CloudBackupLibError, e:
