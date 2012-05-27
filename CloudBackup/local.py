@@ -41,7 +41,7 @@ class FileEntry(object):
         self.path = path
         self.timestamp = timestamp
         self.md5 = md5
-        for k, v in kwargs:
+        for k, v in kwargs.iteritems():
             setattr(self, k, v)
             
         self.calc_md5 = lambda data: hashlib.md5(data).hexdigest()
@@ -328,5 +328,5 @@ class S3SyncHandler(SyncHandler):
             raise e
         
         if self.log:
-            self.log_obj.write('Upload file: %s' % f)
+            self.log_obj.write('上传了文件：%s' % f)
             

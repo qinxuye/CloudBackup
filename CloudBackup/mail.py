@@ -26,7 +26,7 @@ from email.mime.text import MIMEText
 from CloudBackup.test.settings import EMAIL_HOST, EMAIL_HOST_PASSWORD, EMAIL_HOST_USER
 
 def send_mail(to_list, subject, content):
-    msg = MIMEText(content)
+    msg = MIMEText(content, _charset='utf-8')
     msg['Subject'] = subject
     msg['From'] = EMAIL_HOST_USER
     msg['To'] = ';'.join(to_list)
