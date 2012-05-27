@@ -120,7 +120,7 @@
         <rect>
          <x>560</x>
          <y>120</y>
-         <width>61</width>
+         <width>51</width>
          <height>51</height>
         </rect>
        </property>
@@ -137,7 +137,7 @@
      </widget>
      <widget class="QWidget" name="sharetab_under_vdisk">
       <attribute name="title">
-       <string>分享设定</string>
+       <string>浏览云端和分享</string>
       </attribute>
       <widget class="QTreeWidget" name="VtreeWidget">
        <property name="geometry">
@@ -183,7 +183,7 @@
      </widget>
      <widget class="QWidget" name="logtab_under_vdisk">
       <attribute name="title">
-       <string>用户日志</string>
+       <string>操作日志</string>
       </attribute>
       <widget class="QPushButton" name="button_v_logflush">
        <property name="geometry">
@@ -341,7 +341,7 @@
         <rect>
          <x>560</x>
          <y>120</y>
-         <width>61</width>
+         <width>51</width>
          <height>51</height>
         </rect>
        </property>
@@ -358,7 +358,7 @@
      </widget>
      <widget class="QWidget" name="sharetab_under_s3">
       <attribute name="title">
-       <string>分享设定</string>
+       <string>浏览云端和分享</string>
       </attribute>
       <widget class="QTreeWidget" name="StreeWidget">
        <property name="geometry">
@@ -404,7 +404,7 @@
      </widget>
      <widget class="QWidget" name="logtab_under_s3">
       <attribute name="title">
-       <string>用户日志</string>
+       <string>操作日志</string>
       </attribute>
       <widget class="QTreeWidget" name="SlogTreeWidget">
        <property name="geometry">
@@ -559,7 +559,7 @@
         <rect>
          <x>560</x>
          <y>120</y>
-         <width>61</width>
+         <width>51</width>
          <height>51</height>
         </rect>
        </property>
@@ -576,7 +576,7 @@
      </widget>
      <widget class="QWidget" name="sharetab_under_google">
       <attribute name="title">
-       <string>分享设定</string>
+       <string>浏览云端和分享</string>
       </attribute>
       <widget class="QTreeWidget" name="GtreeWidget">
        <property name="geometry">
@@ -622,7 +622,7 @@
      </widget>
      <widget class="QWidget" name="logtab_under_google">
       <attribute name="title">
-       <string>用户日志</string>
+       <string>操作日志</string>
       </attribute>
       <widget class="QTreeWidget" name="GlogTreeWidget">
        <property name="geometry">

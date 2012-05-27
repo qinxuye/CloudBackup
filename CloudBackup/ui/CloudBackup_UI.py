@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'CloudBackup.ui'
 #
-# Created: Sun May 27 00:32:40 2012
+# Created: Sun May 27 18:12:16 2012
 #      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -61,7 +61,7 @@ class Ui_CloudBackupUI(object):
         self.button_v_submit.setObjectName(_fromUtf8("button_v_submit"))
         self.vgridLayout_button.addWidget(self.button_v_submit, 0, 1, 1, 1)
         self.gridLayoutWidget_3 = QtGui.QWidget(self.syntab_under_vdisk)
-        self.gridLayoutWidget_3.setGeometry(QtCore.QRect(560, 120, 61, 51))
+        self.gridLayoutWidget_3.setGeometry(QtCore.QRect(560, 120, 51, 51))
         self.gridLayoutWidget_3.setObjectName(_fromUtf8("gridLayoutWidget_3"))
         self.vgridLayout_dir = QtGui.QGridLayout(self.gridLayoutWidget_3)
         self.vgridLayout_dir.setMargin(0)
@@ -143,7 +143,7 @@ class Ui_CloudBackupUI(object):
         self.button_s_submit.setObjectName(_fromUtf8("button_s_submit"))
         self.sgridLayout_button.addWidget(self.button_s_submit, 0, 1, 1, 1)
         self.gridLayoutWidget_6 = QtGui.QWidget(self.syntab_under_s3)
-        self.gridLayoutWidget_6.setGeometry(QtCore.QRect(560, 120, 61, 51))
+        self.gridLayoutWidget_6.setGeometry(QtCore.QRect(560, 120, 51, 51))
         self.gridLayoutWidget_6.setObjectName(_fromUtf8("gridLayoutWidget_6"))
         self.sgridLayout_dir = QtGui.QGridLayout(self.gridLayoutWidget_6)
         self.sgridLayout_dir.setMargin(0)
@@ -224,7 +224,7 @@ class Ui_CloudBackupUI(object):
         self.button_g_submit.setObjectName(_fromUtf8("button_g_submit"))
         self.ggridLayout_button.addWidget(self.button_g_submit, 0, 1, 1, 1)
         self.gridLayoutWidget_9 = QtGui.QWidget(self.syntab_under_google)
-        self.gridLayoutWidget_9.setGeometry(QtCore.QRect(560, 120, 61, 51))
+        self.gridLayoutWidget_9.setGeometry(QtCore.QRect(560, 120, 51, 51))
         self.gridLayoutWidget_9.setObjectName(_fromUtf8("gridLayoutWidget_9"))
         self.ggridLayout_dir = QtGui.QGridLayout(self.gridLayoutWidget_9)
         self.ggridLayout_dir.setMargin(0)
@@ -282,11 +282,11 @@ class Ui_CloudBackupUI(object):
         self.OpTabWidget_under_vdisk.setTabText(self.OpTabWidget_under_vdisk.indexOf(self.syntab_under_vdisk), QtGui.QApplication.translate("CloudBackupUI", "同步设定", None, QtGui.QApplication.UnicodeUTF8))
         self.button_v_share.setText(QtGui.QApplication.translate("CloudBackupUI", "用邮件分享", None, QtGui.QApplication.UnicodeUTF8))
         self.button_v_cloudflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
-        self.OpTabWidget_under_vdisk.setTabText(self.OpTabWidget_under_vdisk.indexOf(self.sharetab_under_vdisk), QtGui.QApplication.translate("CloudBackupUI", "分享设定", None, QtGui.QApplication.UnicodeUTF8))
+        self.OpTabWidget_under_vdisk.setTabText(self.OpTabWidget_under_vdisk.indexOf(self.sharetab_under_vdisk), QtGui.QApplication.translate("CloudBackupUI", "浏览云端和分享", None, QtGui.QApplication.UnicodeUTF8))
         self.button_v_logflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
         self.VlogTreeWidget.headerItem().setText(0, QtGui.QApplication.translate("CloudBackupUI", "时间", None, QtGui.QApplication.UnicodeUTF8))
         self.VlogTreeWidget.headerItem().setText(1, QtGui.QApplication.translate("CloudBackupUI", "动作", None, QtGui.QApplication.UnicodeUTF8))
-        self.OpTabWidget_under_vdisk.setTabText(self.OpTabWidget_under_vdisk.indexOf(self.logtab_under_vdisk), QtGui.QApplication.translate("CloudBackupUI", "用户日志", None, QtGui.QApplication.UnicodeUTF8))
+        self.OpTabWidget_under_vdisk.setTabText(self.OpTabWidget_under_vdisk.indexOf(self.logtab_under_vdisk), QtGui.QApplication.translate("CloudBackupUI", "操作日志", None, QtGui.QApplication.UnicodeUTF8))
         self.lvuserstate.setText(QtGui.QApplication.translate("CloudBackupUI", "用户登录状态", None, QtGui.QApplication.UnicodeUTF8))
         self.CloudSelectTabWidget.setTabText(self.CloudSelectTabWidget.indexOf(self.vdisktab), QtGui.QApplication.translate("CloudBackupUI", "微盘", None, QtGui.QApplication.UnicodeUTF8))
         self.lsdirpath.setText(QtGui.QApplication.translate("CloudBackupUI", "同步文件夹", None, QtGui.QApplication.UnicodeUTF8))
@@ -296,11 +296,11 @@ class Ui_CloudBackupUI(object):
         self.OpTabWidget_under_s3.setTabText(self.OpTabWidget_under_s3.indexOf(self.syntab_under_s3), QtGui.QApplication.translate("CloudBackupUI", "同步设定", None, QtGui.QApplication.UnicodeUTF8))
         self.button_s_share.setText(QtGui.QApplication.translate("CloudBackupUI", "用邮件分享", None, QtGui.QApplication.UnicodeUTF8))
         self.button_s_cloudflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
-        self.OpTabWidget_under_s3.setTabText(self.OpTabWidget_under_s3.indexOf(self.sharetab_under_s3), QtGui.QApplication.translate("CloudBackupUI", "分享设定", None, QtGui.QApplication.UnicodeUTF8))
+        self.OpTabWidget_under_s3.setTabText(self.OpTabWidget_under_s3.indexOf(self.sharetab_under_s3), QtGui.QApplication.translate("CloudBackupUI", "浏览云端和分享", None, QtGui.QApplication.UnicodeUTF8))
         self.SlogTreeWidget.headerItem().setText(0, QtGui.QApplication.translate("CloudBackupUI", "时间", None, QtGui.QApplication.UnicodeUTF8))
         self.SlogTreeWidget.headerItem().setText(1, QtGui.QApplication.translate("CloudBackupUI", "动作", None, QtGui.QApplication.UnicodeUTF8))
         self.button_s_logflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
-        self.OpTabWidget_under_s3.setTabText(self.OpTabWidget_under_s3.indexOf(self.logtab_under_s3), QtGui.QApplication.translate("CloudBackupUI", "用户日志", None, QtGui.QApplication.UnicodeUTF8))
+        self.OpTabWidget_under_s3.setTabText(self.OpTabWidget_under_s3.indexOf(self.logtab_under_s3), QtGui.QApplication.translate("CloudBackupUI", "操作日志", None, QtGui.QApplication.UnicodeUTF8))
         self.lsuserstate.setText(QtGui.QApplication.translate("CloudBackupUI", "用户登录状态", None, QtGui.QApplication.UnicodeUTF8))
         self.CloudSelectTabWidget.setTabText(self.CloudSelectTabWidget.indexOf(self.s3tab), QtGui.QApplication.translate("CloudBackupUI", "Amazon S3", None, QtGui.QApplication.UnicodeUTF8))
         self.lgdirpath.setText(QtGui.QApplication.translate("CloudBackupUI", "同步文件夹", None, QtGui.QApplication.UnicodeUTF8))
@@ -310,11 +310,11 @@ class Ui_CloudBackupUI(object):
         self.OpTabWidget_under_google.setTabText(self.OpTabWidget_under_google.indexOf(self.syntab_under_google), QtGui.QApplication.translate("CloudBackupUI", "同步设定", None, QtGui.QApplication.UnicodeUTF8))
         self.button_g_share.setText(QtGui.QApplication.translate("CloudBackupUI", "用邮件分享", None, QtGui.QApplication.UnicodeUTF8))
         self.button_g_cloudflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
-        self.OpTabWidget_under_google.setTabText(self.OpTabWidget_under_google.indexOf(self.sharetab_under_google), QtGui.QApplication.translate("CloudBackupUI", "分享设定", None, QtGui.QApplication.UnicodeUTF8))
+        self.OpTabWidget_under_google.setTabText(self.OpTabWidget_under_google.indexOf(self.sharetab_under_google), QtGui.QApplication.translate("CloudBackupUI", "浏览云端和分享", None, QtGui.QApplication.UnicodeUTF8))
         self.GlogTreeWidget.headerItem().setText(0, QtGui.QApplication.translate("CloudBackupUI", "时间", None, QtGui.QApplication.UnicodeUTF8))
         self.GlogTreeWidget.headerItem().setText(1, QtGui.QApplication.translate("CloudBackupUI", "动作", None, QtGui.QApplication.UnicodeUTF8))
         self.button_g_logflush.setText(QtGui.QApplication.translate("CloudBackupUI", "刷新", None, QtGui.QApplication.UnicodeUTF8))
-        self.OpTabWidget_under_google.setTabText(self.OpTabWidget_under_google.indexOf(self.logtab_under_google), QtGui.QApplication.translate("CloudBackupUI", "用户日志", None, QtGui.QApplication.UnicodeUTF8))
+        self.OpTabWidget_under_google.setTabText(self.OpTabWidget_under_google.indexOf(self.logtab_under_google), QtGui.QApplication.translate("CloudBackupUI", "操作日志", None, QtGui.QApplication.UnicodeUTF8))
         self.lguserstate.setText(QtGui.QApplication.translate("CloudBackupUI", "用户登录状态", None, QtGui.QApplication.UnicodeUTF8))
         self.CloudSelectTabWidget.setTabText(self.CloudSelectTabWidget.indexOf(self.gctab), QtGui.QApplication.translate("CloudBackupUI", "Google云存储", None, QtGui.QApplication.UnicodeUTF8))
 

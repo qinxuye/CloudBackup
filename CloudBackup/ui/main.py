@@ -138,11 +138,17 @@ class UI(QtGui.QMainWindow):
         self.gs_info = self.env.load_gs_info()
         
         self.vdisk_cloud_browser_thread = None
+        self.vdisk_cloud_browser_thread_lock = threading.Lock()
         self.vdisk_log_thread = None
+        self.vdisk_log_thread_lock = threading.Lock()
         self.s3_cloud_browser_thread = None
+        self.s3_cloud_browser_thread_lock = threading.Lock()
         self.s3_log_thread = None
+        self.s3_log_thread_lock = threading.Lock()
         self.gs_cloud_browser_thread = None
+        self.gs_cloud_browser_thread_lock = threading.Lock()
         self.gs_log_thread = None
+        self.gs_log_thread_lock = threading.Lock()
         
         self.vdisk_init()
         self.s3_init()
@@ -272,8 +278,11 @@ class UI(QtGui.QMainWindow):
             path = str(path)
             name = str(items[0].text(0))
             return path, name
-        except IndexError,e:
+        except IndexError, e:
             self.alert(u'请选择要分享的文件！')
+            return
+        except Exception, e:
+            self.alert(u'分享错误，请选择要分享的文件！')
             return
         
     def vdisk_init(self):
@@ -404,13 +413,17 @@ class UI(QtGui.QMainWindow):
         show the logs about files that synchronized with the cloud
         """
         
-        if self.vdisk_log_thread:
-            self.vdisk_log_thread.stop()
-            self.vdisk_log_thread.join()
-            
-        self.vdisk_log_thread = LogFlushThread(self.ui.VlogTreeWidget, self.vdisk_handler)
-        self.vdisk_log_thread.setDaemon(True)
-        self.vdisk_log_thread.start()
+        try:
+            self.vdisk_log_thread_lock.acquire()
+            if self.vdisk_log_thread:
+                self.vdisk_log_thread.stop()
+                self.vdisk_log_thread.join()
+                
+            self.vdisk_log_thread = LogFlushThread(self.ui.VlogTreeWidget, self.vdisk_handler)
+            self.vdisk_log_thread.setDaemon(True)
+            self.vdisk_log_thread.start()
+        finally:
+            self.vdisk_log_thread_lock.release()
     
     def vdisk_login_reset(self):
         """
@@ -424,23 +437,35 @@ class UI(QtGui.QMainWindow):
         '''
         Flush the cloud fiels.
         '''
-        if self.vdisk_cloud_browser_thread:
-            self.vdisk_cloud_browser_thread.stop()
-            self.vdisk_cloud_browser_thread.join()
-        
-        self.vdisk_cloud_browser_thread = CloudBrowserFlushThread(
-            self, self.ui.VtreeWidget, self.vdisk_handler)
-        self.vdisk_cloud_browser_thread.setDaemon(True)
-        self.vdisk_cloud_browser_thread.start()
+
+        self.vdisk_cloud_browser_thread_lock.acquire()
+        try:
+            if self.vdisk_handler is None:
+                return
+
+            if self.vdisk_cloud_browser_thread:
+                self.vdisk_cloud_browser_thread.stop()
+                self.vdisk_cloud_browser_thread.join()
+            
+            self.vdisk_cloud_browser_thread = CloudBrowserFlushThread(
+                self, self.ui.VtreeWidget, self.vdisk_handler)
+            self.vdisk_cloud_browser_thread.setDaemon(True)
+            self.vdisk_cloud_browser_thread.start()
+        finally:
+            self.vdisk_cloud_browser_thread_lock.release()
         
     def vdisk_file_share(self):
         """
         share a syn file to others by email
         """
+
+        result = self.get_cloud_path(self.ui.VtreeWidget)
+        if result is None:
+            return
         
-        self.vdisk_file_path, self.vdisk_file_name = self.get_cloud_path(self.ui.VtreeWidget)
+        vdisk_file_path, vdisk_file_name = result
         
-        if self.vdisk_file_path is None or len(str(self.vdisk_file_path)) == 0: 
+        if vdisk_file_path is None or len(str(vdisk_file_path)) == 0: 
             self.alert('不支持文件夹分享，请选择文件')
             return
         
@@ -450,12 +475,12 @@ class UI(QtGui.QMainWindow):
         
         storage = self.vdisk_handler.storage
         try:
-            sharepath = storage.share(self.vdisk_file_path)
+            sharepath = storage.share(vdisk_file_path)
         except VdiskError, e:
             self.alert(e.msg)
         self.vshare.ui.textareav.setText(QtCore.QString(
             u'微盘用户%s通过邮件向你分享文件“%s”，下载地址：%s' % \
-            (self.vdisk_info['account'], self.vdisk_file_name, sharepath))
+            (self.vdisk_info['account'], vdisk_file_name, sharepath))
         )
         
         QtCore.QObject.connect(self.vshare.ui.button_submit, QtCore.SIGNAL("clicked()"),
@@ -639,13 +664,17 @@ class UI(QtGui.QMainWindow):
         show the logs about files that synchronized with the cloud
         """
         
-        if self.s3_log_thread:
-            self.s3_log_thread.stop()
-            self.s3_log_thread.join()
-            
-        self.s3_log_thread = LogFlushThread(self.ui.SlogTreeWidget, self.s3_handler)
-        self.s3_log_thread.setDaemon(True)
-        self.s3_log_thread.start()
+        try:
+            self.s3_log_thread_lock.acquire()
+            if self.s3_log_thread:
+                self.s3_log_thread.stop()
+                self.s3_log_thread.join()
+                
+            self.s3_log_thread = LogFlushThread(self.ui.SlogTreeWidget, self.s3_handler)
+            self.s3_log_thread.setDaemon(True)
+            self.s3_log_thread.start()
+        finally:
+            self.s3_log_thread_lock.release()
        
     def s3_login_reset(self):
         """
@@ -660,21 +689,32 @@ class UI(QtGui.QMainWindow):
         Flush the cloud fiels.
         '''
         
-        if self.s3_cloud_browser_thread:
-            self.s3_cloud_browser_thread.stop()
-            self.s3_cloud_browser_thread.join()
-        
-        self.s3_cloud_browser_thread = CloudBrowserFlushThread(
-            self, self.ui.StreeWidget, self.s3_handler)
-        self.s3_cloud_browser_thread.setDaemon(True)
-        self.s3_cloud_browser_thread.start()
+        self.s3_cloud_browser_thread_lock.acquire()
+        try:
+            if self.s3_handler is None:
+                return
+
+            if self.s3_cloud_browser_thread:
+                self.s3_cloud_browser_thread.stop()
+                self.s3_cloud_browser_thread.join()
+            
+            self.s3_cloud_browser_thread = CloudBrowserFlushThread(
+                self, self.ui.StreeWidget, self.s3_handler)
+            self.s3_cloud_browser_thread.setDaemon(True)
+            self.s3_cloud_browser_thread.start()
+        finally:
+            self.s3_cloud_browser_thread_lock.release()
     
     def s3_file_share(self):
         """
         share a syn file to others by email
         """
+
+        result = self.get_cloud_path(self.ui.StreeWidget)
+        if result is None:
+            return
         
-        s3_file_path, s3_file_name = self.get_cloud_path(self.ui.StreeWidget)
+        s3_file_path, s3_file_name = result
         
         if s3_file_path is None or len(str(s3_file_path)) == 0: 
             self.alert('不支持文件夹分享，请选择文件')
@@ -862,13 +902,17 @@ class UI(QtGui.QMainWindow):
         show the logs about files that synchronized with the cloud
         """
         
-        if self.gs_log_thread:
-            self.gs_log_thread.stop()
-            self.gs_log_thread.join()
-            
-        self.gs_log_thread = LogFlushThread(self.ui.GlogTreeWidget, self.gs_handler)
-        self.gs_log_thread.setDaemon(True)
-        self.gs_log_thread.start()
+        try:
+            self.gs_log_thread_lock.acquire()
+            if self.gs_log_thread:
+                self.gs_log_thread.stop()
+                self.gs_log_thread.join()
+                
+            self.gs_log_thread = LogFlushThread(self.ui.GlogTreeWidget, self.gs_handler)
+            self.gs_log_thread.setDaemon(True)
+            self.gs_log_thread.start()
+        finally:
+            self.gs_log_thread_lock.release()
        
     def gs_login_reset(self):
         """
@@ -884,21 +928,32 @@ class UI(QtGui.QMainWindow):
         Flush the cloud fiels.
         '''
         
-        if self.gs_cloud_browser_thread:
-            self.gs_cloud_browser_thread.stop()
-            self.gs_cloud_browser_thread.join()
-        
-        self.gs_cloud_browser_thread = CloudBrowserFlushThread(
-            self, self.ui.GtreeWidget, self.gs_handler)
-        self.gs_cloud_browser_thread.setDaemon(True)
-        self.gs_cloud_browser_thread.start()    
+        self.gs_cloud_browser_thread_lock.acquire()
+        try:
+            if self.gs_handler is None:
+                return
+            
+            if self.gs_cloud_browser_thread:
+                self.gs_cloud_browser_thread.stop()
+                self.gs_cloud_browser_thread.join()
+            
+            self.gs_cloud_browser_thread = CloudBrowserFlushThread(
+                self, self.ui.GtreeWidget, self.gs_handler)
+            self.gs_cloud_browser_thread.setDaemon(True)
+            self.gs_cloud_browser_thread.start()
+        finally:
+            self.gs_cloud_browser_thread_lock.release()
            
     def gs_file_share(self):
         """
         share a syn file to others by email
         """
         
-        gs_file_path, gs_file_name = self.get_cloud_path(self.ui.GtreeWidget)
+        result = self.get_cloud_path(self.ui.GtreeWidget)
+        if result is None:
+            return
+        
+        gs_file_path, gs_file_name = result
         
         if gs_file_path is None or len(str(gs_file_path)) == 0: 
             self.alert('不支持文件夹分享，请选择文件')
