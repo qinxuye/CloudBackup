@@ -11,9 +11,11 @@ from datetime import datetime, timedelta
 
 from CloudBackup.lib.vdisk import (VdiskClient as Client, 
                                    CryptoVdiskClient as CryptoClient)
+from CloudBackup.lib.errors import VdiskError
 
 MAX_REQUEST_PER_MINUTE = 150
 MAX_REQUEST_THRESHOLD = 10
+SLEEP_INTERVAL = 10
 
 class VdiskClient(Client):
     '''
@@ -38,7 +40,18 @@ class VdiskClient(Client):
             self.start = end
             self.count = 0
         
-        return super(VdiskClient, self)._base_oper(url_params, params, **kwargs)
+        def _action():
+            return super(VdiskClient, self)._base_oper(url_params, params, **kwargs)
+        
+        try:
+            return _action()
+        except VdiskError, e:
+            if e.err_no == 900:
+                time.sleep(SLEEP_INTERVAL)
+                return _action()
+            else:
+                raise e
+                
     
 class CryptoVdiskClient(CryptoClient, Client):
     '''

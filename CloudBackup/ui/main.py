@@ -49,6 +49,7 @@ class CloudBrowserFlushThread(threading.Thread):
             return
         
         try:
+            if self.stopped: return
             for itm in self.handler.list_cloud(path):
                 if itm is None or self.stopped: return
                 
@@ -64,6 +65,8 @@ class CloudBrowserFlushThread(threading.Thread):
         except VdiskError, e:
             if e.err_no == 900:
                 time.sleep(10)
+            if e.err_no < 0:
+                return
             else:
                 raise e
     
@@ -395,6 +398,7 @@ class UI(QtGui.QMainWindow):
         
         if self.vdisk_log_thread:
             self.vdisk_log_thread.stop()
+            while self.vdisk_log_thread.isAlive(): pass
             
         self.vdisk_log_thread = LogFlushThread(self.ui.VlogTreeWidget, self.vdisk_handler)
         self.vdisk_log_thread.setDaemon(True)
@@ -414,6 +418,7 @@ class UI(QtGui.QMainWindow):
         '''
         if self.vdisk_cloud_browser_thread:
             self.vdisk_cloud_browser_thread.stop()
+            while self.vdisk_cloud_browser_thread.isAlive(): pass
         
         self.vdisk_cloud_browser_thread = CloudBrowserFlushThread(
             self, self.ui.VtreeWidget, self.vdisk_handler)
@@ -624,6 +629,7 @@ class UI(QtGui.QMainWindow):
         
         if self.s3_log_thread:
             self.s3_log_thread.stop()
+            while self.s3_log_thread.isAlive(): pass
             
         self.s3_log_thread = LogFlushThread(self.ui.SlogTreeWidget, self.s3_handler)
         self.s3_log_thread.setDaemon(True)
@@ -644,6 +650,7 @@ class UI(QtGui.QMainWindow):
         
         if self.s3_cloud_browser_thread:
             self.s3_cloud_browser_thread.stop()
+            while self.s3_cloud_browser_thread.isAlive(): pass
         
         self.s3_cloud_browser_thread = CloudBrowserFlushThread(
             self, self.ui.StreeWidget, self.s3_handler)
@@ -841,6 +848,7 @@ class UI(QtGui.QMainWindow):
         
         if self.gs_log_thread:
             self.gs_log_thread.stop()
+            while self.gs_log_thread.isAlive(): pass
             
         self.gs_log_thread = LogFlushThread(self.ui.GlogTreeWidget, self.gs_handler)
         self.gs_log_thread.setDaemon(True)
@@ -862,6 +870,7 @@ class UI(QtGui.QMainWindow):
         
         if self.gs_cloud_browser_thread:
             self.gs_cloud_browser_thread.stop()
+            while self.gs_cloud_browser_thread.isAlive(): pass
         
         self.gs_cloud_browser_thread = CloudBrowserFlushThread(
             self, self.ui.GtreeWidget, self.gs_handler)
