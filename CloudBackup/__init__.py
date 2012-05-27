@@ -20,5 +20,5 @@ Created on 2012-4-24
 @author: Chine
 '''
 
-__version__ = (0, 0, 1)
+__version__ = (1, 0, 0)
 __author__ = 'Chine King'
