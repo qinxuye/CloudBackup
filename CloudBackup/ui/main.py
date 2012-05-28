@@ -39,7 +39,7 @@ import S3Share_UI
 import GoogleCloudLogin_UI
 import GoogleCloudShare_UI
     
-class CloudBrowserFlushThread(threading.Thread):
+class CloudBrowserFlushThread(QtCore.QThread):
     def __init__(self, base_ui, browser_ui, handler):
         super(CloudBrowserFlushThread, self).__init__()
         self.base_ui = base_ui
@@ -56,27 +56,30 @@ class CloudBrowserFlushThread(threading.Thread):
         if self.handler is None or self.stopped:
             return
         
-        if self.stopped: return
+        if parent is None:
+            return
+        
         for itm in self.handler.list_cloud(path):
             if itm is None or self.stopped: return
             
-            name = QtCore.QString(itm.path.split('/')[-1].decode('utf-8'))
-            widget_itm = QtGui.QTreeWidgetItem(QtCore.QStringList(name))
-            
-            if isinstance(itm, CloudFile):
-                widget_itm.setToolTip(0, QtCore.QString(itm.cloud_path))            
-                parent.addChild(widget_itm)
-            elif isinstance(itm, CloudFolder):
-                parent.addChild(widget_itm)
-                self.generate_cloud_tree(itm.cloud_path, widget_itm)
+            try:
+                widget_itm = QtGui.QTreeWidgetItem(parent)
+                widget_itm.setText(0, 
+                                   QtCore.QString(itm.path.split('/')[-1].decode('utf-8')))
+                
+                if isinstance(itm, CloudFile):
+                    widget_itm.setToolTip(0, QtCore.QString(itm.cloud_path))
+                elif isinstance(itm, CloudFolder):
+                    self.generate_cloud_tree(itm.cloud_path, widget_itm)
+            except RuntimeError:
+                pass
     
     def cloud_browser_flush(self):
-        self.ui.clear()
         root = self.base_ui.add_root_to_cloud_browser(self.ui)
         try:
             self.generate_cloud_tree(parent=root)
         except CloudBackupLibError, e:
-            self.handler.err_log.exception(str(e))
+            self.handler.error_log.exception(str(e))
     
     def run(self):
         self.cloud_browser_flush()
@@ -84,7 +87,7 @@ class CloudBrowserFlushThread(threading.Thread):
     def stop(self):
         self.stopped = True
         
-class LogFlushThread(threading.Thread):
+class LogFlushThread(QtCore.QThread):
     def __init__(self, ui, handler):
         super(LogFlushThread, self).__init__()
         self.ui = ui
@@ -95,8 +98,6 @@ class LogFlushThread(threading.Thread):
     def show_logs(self):
         if self.handler is None or self.stopped:
             return
-        
-        self.ui.clear()
         
         if self.stopped: return
         
@@ -109,11 +110,9 @@ class LogFlushThread(threading.Thread):
                 stime = ' '.join((splits[i] for i in range(2)))
                 saction = splits[2]
                 
-                log =  QtGui.QTreeWidgetItem()
+                log =  QtGui.QTreeWidgetItem(self.ui)
                 log.setText(0, QtCore.QString(stime))
                 log.setText(1, QtCore.QString(saction.decode('utf-8')))
-            
-                self.ui.addTopLevelItem(log)
                 
     def run(self):
         self.show_logs()
@@ -260,10 +259,8 @@ class UI(QtGui.QMainWindow):
         return _action
     
     def add_root_to_cloud_browser(self, ui):
-        value = QtCore.QString(u'根目录')
-        stringlist = QtCore.QStringList(value)
-        root = QtGui.QTreeWidgetItem(stringlist)
-        ui.addTopLevelItem(root)
+        root = QtGui.QTreeWidgetItem(ui)
+        root.setText(0, QtCore.QString(u'根目录'))
         
         return root
     
@@ -275,8 +272,8 @@ class UI(QtGui.QMainWindow):
         items = tree.selectedItems()
         try:
             path = items[0].toolTip(0)
-            path = str(path)
-            name = str(items[0].text(0))
+            path = unicode(path).encode('utf-8')
+            name = unicode(items[0].text(0)).encode('utf-8')
             return path, name
         except IndexError, e:
             self.alert(u'请选择要分享的文件！')
@@ -415,12 +412,13 @@ class UI(QtGui.QMainWindow):
         
         try:
             self.vdisk_log_thread_lock.acquire()
-            if self.vdisk_log_thread:
+            if self.vdisk_log_thread and not self.vdisk_log_thread.finished:
                 self.vdisk_log_thread.stop()
-                self.vdisk_log_thread.join()
+                self.vdisk_log_thread.wait()
                 
+            self.ui.VlogTreeWidget.clearSelection()
+            self.ui.VlogTreeWidget.clear()
             self.vdisk_log_thread = LogFlushThread(self.ui.VlogTreeWidget, self.vdisk_handler)
-            self.vdisk_log_thread.setDaemon(True)
             self.vdisk_log_thread.start()
         finally:
             self.vdisk_log_thread_lock.release()
@@ -443,13 +441,16 @@ class UI(QtGui.QMainWindow):
             if self.vdisk_handler is None:
                 return
 
-            if self.vdisk_cloud_browser_thread:
+            if self.vdisk_cloud_browser_thread \
+               and not self.vdisk_cloud_browser_thread.finished:
                 self.vdisk_cloud_browser_thread.stop()
-                self.vdisk_cloud_browser_thread.join()
+                self.vdisk_cloud_browser_thread.exit()
+                self.vdisk_cloud_browser_thread.wait()
             
+            self.ui.VtreeWidget.clearSelection()
+            self.ui.VtreeWidget.clear()
             self.vdisk_cloud_browser_thread = CloudBrowserFlushThread(
                 self, self.ui.VtreeWidget, self.vdisk_handler)
-            self.vdisk_cloud_browser_thread.setDaemon(True)
             self.vdisk_cloud_browser_thread.start()
         finally:
             self.vdisk_cloud_browser_thread_lock.release()
@@ -458,6 +459,9 @@ class UI(QtGui.QMainWindow):
         """
         share a syn file to others by email
         """
+        
+        if self.vdisk_handler is None:
+            return
 
         result = self.get_cloud_path(self.ui.VtreeWidget)
         if result is None:
@@ -475,12 +479,12 @@ class UI(QtGui.QMainWindow):
         
         storage = self.vdisk_handler.storage
         try:
-            sharepath = storage.share(vdisk_file_path)
+            sharepath = storage.share(vdisk_file_path.decode('utf-8'))
         except VdiskError, e:
             self.alert(e.msg)
         self.vshare.ui.textareav.setText(QtCore.QString(
             u'微盘用户%s通过邮件向你分享文件“%s”，下载地址：%s' % \
-            (self.vdisk_info['account'], vdisk_file_name, sharepath))
+            (self.vdisk_info['account'], vdisk_file_name.decode('utf-8'), sharepath))
         )
         
         QtCore.QObject.connect(self.vshare.ui.button_submit, QtCore.SIGNAL("clicked()"),
@@ -666,12 +670,13 @@ class UI(QtGui.QMainWindow):
         
         try:
             self.s3_log_thread_lock.acquire()
-            if self.s3_log_thread:
+            if self.s3_log_thread and not self.s3_log_thread.finished:
                 self.s3_log_thread.stop()
-                self.s3_log_thread.join()
+                self.s3_log_thread.wait()
                 
+            self.ui.SlogTreeWidget.clearSelection()
+            self.ui.SlogTreeWidget.clear()
             self.s3_log_thread = LogFlushThread(self.ui.SlogTreeWidget, self.s3_handler)
-            self.s3_log_thread.setDaemon(True)
             self.s3_log_thread.start()
         finally:
             self.s3_log_thread_lock.release()
@@ -694,13 +699,15 @@ class UI(QtGui.QMainWindow):
             if self.s3_handler is None:
                 return
 
-            if self.s3_cloud_browser_thread:
+            if self.s3_cloud_browser_thread \
+               and not self.s3_cloud_browser_thread.finished:
                 self.s3_cloud_browser_thread.stop()
-                self.s3_cloud_browser_thread.join()
+                self.s3_cloud_browser_thread.wait()
             
+            self.ui.StreeWidget.clearSelection()
+            self.ui.StreeWidget.clear()
             self.s3_cloud_browser_thread = CloudBrowserFlushThread(
                 self, self.ui.StreeWidget, self.s3_handler)
-            self.s3_cloud_browser_thread.setDaemon(True)
             self.s3_cloud_browser_thread.start()
         finally:
             self.s3_cloud_browser_thread_lock.release()
@@ -709,6 +716,9 @@ class UI(QtGui.QMainWindow):
         """
         share a syn file to others by email
         """
+        
+        if self.s3_handler is None:
+            return
 
         result = self.get_cloud_path(self.ui.StreeWidget)
         if result is None:
@@ -809,7 +819,18 @@ class UI(QtGui.QMainWindow):
         """
          
         self.ui.tgdirpath.clear()
+        
+        if self.gs_cloud_browser_thread:
+            self.gs_cloud_browser_thread.stop()
+        if self.gs_log_thread:
+            self.gs_log_thread.stop()
+        self.ui.GtreeWidget.clear()
+        self.ui.GlogTreeWidget.clear()
+         
         self.env.stop_gs()
+        self.gs_info = None
+        self.status_reset(self.ui.button_g_submit, 
+                          self.ui.lguserstate)
         
     def gs_dir_submit(self):
         """
@@ -904,12 +925,13 @@ class UI(QtGui.QMainWindow):
         
         try:
             self.gs_log_thread_lock.acquire()
-            if self.gs_log_thread:
+            if self.gs_log_thread and not self.gs_log_thread.finished:
                 self.gs_log_thread.stop()
-                self.gs_log_thread.join()
+                self.gs_log_thread.wait()
                 
+            self.ui.GlogTreeWidget.clearSelection()
+            self.ui.GlogTreeWidget.clear()
             self.gs_log_thread = LogFlushThread(self.ui.GlogTreeWidget, self.gs_handler)
-            self.gs_log_thread.setDaemon(True)
             self.gs_log_thread.start()
         finally:
             self.gs_log_thread_lock.release()
@@ -933,13 +955,15 @@ class UI(QtGui.QMainWindow):
             if self.gs_handler is None:
                 return
             
-            if self.gs_cloud_browser_thread:
+            if self.gs_cloud_browser_thread \
+               and not self.gs_cloud_browser_thread.finished:
                 self.gs_cloud_browser_thread.stop()
-                self.gs_cloud_browser_thread.join()
+                self.gs_cloud_browser_thread.wait()
             
+            self.ui.GtreeWidget.clearSelection()
+            self.ui.GtreeWidget.clear()
             self.gs_cloud_browser_thread = CloudBrowserFlushThread(
                 self, self.ui.GtreeWidget, self.gs_handler)
-            self.gs_cloud_browser_thread.setDaemon(True)
             self.gs_cloud_browser_thread.start()
         finally:
             self.gs_cloud_browser_thread_lock.release()
@@ -948,6 +972,9 @@ class UI(QtGui.QMainWindow):
         """
         share a syn file to others by email
         """
+        
+        if self.gs_handler is None:
+            return
         
         result = self.get_cloud_path(self.ui.GtreeWidget)
         if result is None:
@@ -967,7 +994,7 @@ class UI(QtGui.QMainWindow):
         sharepath = storage.share(gs_file_path)
         self.gshare.ui.textareag.setText(QtCore.QString(
             u'Google云存储用户（id: %s）通过邮件向你分享文件“%s”，下载地址：%s' % \
-            (self.gs_info['access_key'], gs_file_name, sharepath))
+            (self.gs_info['access_key'], gs_file_name.decode('utf-8'), sharepath.decode('utf-8')))
         )
         
         QtCore.QObject.connect(self.gshare.ui.button_submit, QtCore.SIGNAL("clicked()"),
