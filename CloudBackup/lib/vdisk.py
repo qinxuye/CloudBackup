@@ -223,7 +223,7 @@ class VdiskClient(object):
                       'dologid': self.dologid
                       }
             
-            if upload_name and upload_name != os.path.split(filename)[1]:
+            if upload_name and upload_name.decode('utf-8') != os.path.split(filename)[1]:
                 params['file'] = (fp, upload_name)
             
             if callback:

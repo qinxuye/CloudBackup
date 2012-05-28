@@ -186,7 +186,10 @@ class SyncHandler(threading.Thread):
                 
                 abs_filename = os.path.join(dirpath, filename)
                 rel_path = abs_filename.split(folder_name, 1)[1]
-                rel_path = rel_path.decode(self.encoding).encode('utf-8')
+                if isinstance(rel_path, unicode):
+                    rel_path = rel_path.encode('utf-8')
+                else:
+                    rel_path = rel_path.decode(self.encoding).encode('utf-8')
                 timestamp = int(os.path.getmtime(abs_filename))
                 
                 if hasattr(self.storage.client, 'des'):
@@ -229,7 +232,7 @@ class SyncHandler(threading.Thread):
         
     def _download(self, f, local_files_tm, cloud_files_tm):
         filename = join_local_path(self.folder_name, 
-                                   f.decode('utf-8').encode(self.encoding))
+                                   f.decode('utf-8'))
         dirname = os.path.dirname(filename)
         if not os.path.exists(dirname):
             os.makedirs(dirname)

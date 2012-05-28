@@ -42,8 +42,12 @@ def is_windows():
     return platform.system() is 'Windows'
 
 def win_hide_file(log_file):
+    if isinstance(log_file, str): log_file = log_file.decode('utf-8')
     if is_windows() and os.path.exists(log_file):
-        subprocess.call('attrib +h %s' % log_file, shell=True)
+        try:
+            subprocess.call('attrib +h %s' % log_file.encode('gbk'), shell=True)
+        except UnicodeEncodeError:
+            subprocess.call('attrib +h %s' % log_file.encode('utf-8'), shell=True)
         
 get_root_path = lambda: os.path.dirname(__file__)
 

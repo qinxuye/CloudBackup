@@ -293,7 +293,7 @@ class UI(QtGui.QMainWindow):
             
         if success:
             self.ui.tvdirpath.setText(
-                QtCore.QString(self.vdisk_info['local_folder'].decode('utf-8')))
+                QtCore.QString(self.vdisk_info['local_folder']))
             self.status_set(self.ui.button_v_submit, 
                             self.ui.lvuserstate, 
                             "Hello, 微盘用户 %s" % self.vdisk_info['account'])
@@ -325,10 +325,10 @@ class UI(QtGui.QMainWindow):
         submit the cloud info so that the selected folder become the syn folder
         """
         
-        if len(str(self.ui.tvdirpath.text())) == 0:
+        if len(unicode(self.ui.tvdirpath.text()).encode('utf-8').decode('utf-8')) == 0:
             self.alert(u"同步文件夹不能为空！")
             return
-        if not os.path.exists(str(self.ui.tvdirpath.text())):
+        if not os.path.exists(unicode(self.ui.tvdirpath.text()).encode('utf-8').decode('utf-8')):
             self.alert(u"你所设置的路径不存在！")
             return
         
@@ -345,7 +345,7 @@ class UI(QtGui.QMainWindow):
             self.vlogin.exec_()
         else:
             info = dict(self.vdisk_info)
-            info['local_folder'] = str(self.ui.tvdirpath.text())
+            info['local_folder'] = unicode(self.ui.tvdirpath.text()).encode('utf-8').decode('utf-8')
             success = self.vdisk_setup(**info)
             if not success:
                 self.alert('登录失败！')
@@ -359,7 +359,7 @@ class UI(QtGui.QMainWindow):
         pwd = str(self.vlogin.ui.tvpwd.text())
         is_weibo = self.vlogin.ui.tvisweibo.isChecked()
         encrypt = self.vlogin.ui.tvencrypt.isChecked()
-        local_folder = str(self.ui.tvdirpath.text())
+        local_folder = unicode(self.ui.tvdirpath.text()).encode('utf-8').decode('utf-8')
         
         success = self.vdisk_setup(user, pwd, local_folder, is_weibo, encrypt)
         if success:
@@ -550,7 +550,7 @@ class UI(QtGui.QMainWindow):
             
         if success:
             self.ui.tsdirpath.setText(
-                QtCore.QString(self.s3_info['local_folder'].decode('utf-8')))
+                QtCore.QString(self.s3_info['local_folder']))
             self.status_set(self.ui.button_s_submit, 
                             self.ui.lsuserstate, 
                             "Hello, Amazon S3用户 %s" % self.s3_display_name)
@@ -582,10 +582,10 @@ class UI(QtGui.QMainWindow):
         submit the cloud info so that the selected folder become the syn folder
         """ 
         
-        if len(str(self.ui.tsdirpath.text())) == 0:
+        if len(unicode(self.ui.tsdirpath.text()).encode('utf-8').decode('utf-8')) == 0:
             self.alert(u"同步文件夹不能为空！")
             return
-        if not os.path.exists(str(self.ui.tsdirpath.text())):
+        if not os.path.exists(unicode(self.ui.tsdirpath.text()).encode('utf-8').decode('utf-8')):
             self.alert(u"你所设置的路径不存在！")
             return
         
@@ -602,7 +602,7 @@ class UI(QtGui.QMainWindow):
             self.slogin.exec_()
         else:
             info = dict(self.s3_info)
-            info['local_folder'] = str(self.ui.tsdirpath.text())
+            info['local_folder'] = unicode(self.ui.tsdirpath.text()).encode('utf-8').decode('utf-8')
             success = self.s3_setup(**info)
             if not success:
                 self.alert('登录失败！')
@@ -614,7 +614,7 @@ class UI(QtGui.QMainWindow):
         
         access_key = str(self.slogin.ui.ts_access_key.text())
         secret_access_key = str(self.slogin.ui.ts_secret_access_key.text())
-        local_folder = str(self.ui.tsdirpath.text())
+        local_folder = unicode(self.ui.tsdirpath.text()).encode('utf-8').decode('utf-8')
         encrypt = self.slogin.ui.lsencrypt.isChecked()
         
         success = self.s3_setup(access_key, secret_access_key, local_folder, encrypt)
@@ -805,7 +805,7 @@ class UI(QtGui.QMainWindow):
             
         if success:
             self.ui.tgdirpath.setText(
-                QtCore.QString(self.gs_info['local_folder'].decode('utf-8')))
+                QtCore.QString(self.gs_info['local_folder']))
             self.status_set(self.ui.button_g_submit, 
                             self.ui.lguserstate, 
                             "Hello, Google云存储用户")
@@ -837,10 +837,10 @@ class UI(QtGui.QMainWindow):
         submit the cloud info so that the selected folder become the syn folder
         """
         
-        if len(str(self.ui.tgdirpath.text())) == 0:
+        if len(unicode(self.ui.tgdirpath.text()).encode('utf-8').decode('utf-8')) == 0:
             self.alert(u"同步文件夹不能为空！")
             return
-        if not os.path.exists(str(self.ui.tgdirpath.text())):
+        if not os.path.exists(unicode(self.ui.tgdirpath.text()).encode('utf-8').decode('utf-8')):
             self.alert(u"你所设置的路径不存在！")
             return
         
@@ -857,7 +857,7 @@ class UI(QtGui.QMainWindow):
             self.glogin.exec_()
         else:
             info = dict(self.gs_info)
-            info['local_folder'] = str(self.ui.tgdirpath.text())
+            info['local_folder'] = unicode(self.ui.tgdirpath.text()).encode('utf-8').decode('utf-8')
             success = self.gs_setup(**info)
             if not success:
                 self.alert('登录失败！')
@@ -870,7 +870,7 @@ class UI(QtGui.QMainWindow):
         access_key = str(self.glogin.ui.tg_access_key.text())
         secret_access_key  = str(self.glogin.ui.tg_secret_access_key.text())
         project_id = str(self.glogin.ui.tg_project_id.text())
-        local_folder = str(self.ui.tgdirpath.text())
+        local_folder = unicode(self.ui.tgdirpath.text()).encode('utf-8').decode('utf-8')
         encrypt = self.glogin.ui.tgencrypt.isChecked()
         
         success = self.gs_setup(access_key, secret_access_key, project_id, local_folder, encrypt)
@@ -913,8 +913,7 @@ class UI(QtGui.QMainWindow):
             self.gs_show_logs()
             
             return True
-        except  GSError, e:
-            
+        except  GSError:
             self.alert('登录失败！')
             return False
                     

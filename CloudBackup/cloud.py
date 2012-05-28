@@ -109,6 +109,9 @@ class VdiskStorage(Storage):
         if len(cloud_path) == 0:
             return 0
         
+        if isinstance(cloud_path, unicode):
+            cloud_path = cloud_path.encode('utf-8')
+        
         dir_id = self.cache.get(cloud_path, 0)
         if dir_id != 0:
             return dir_id
@@ -140,6 +143,9 @@ class VdiskStorage(Storage):
         if cloud_path in self.cache:
             return self.cache[cloud_path]
         
+        if isinstance(cloud_path, unicode):
+            cloud_path = cloud_path.encode('utf-8')
+        
         dir_id = 0
         if '/' in cloud_path:
             dir_path, name = tuple(cloud_path.rsplit('/', 1))
@@ -157,7 +163,7 @@ class VdiskStorage(Storage):
                 c_page += 1
                 
             for itm in result.list:
-                if itm.name == name:
+                if itm.name == name.decode('utf-8'):
                     self.cache[cloud_path] = itm.id
                     if include_name:
                         return itm.id, itm.name
@@ -360,6 +366,7 @@ class S3Storage(Storage):
         '''
         
         cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        if isinstance(cloud_path, unicode): cloud_path = cloud_path.encode('utf-8')
         self.client.download_file(filename, self.holder, cloud_path)
         
     def delete(self, cloud_path):
@@ -397,6 +404,7 @@ class S3Storage(Storage):
         '''
         
         cloud_path = self._ensure_cloud_path_legal(cloud_path)
+        if isinstance(cloud_path, unicode): cloud_path = cloud_path.encode('utf-8')
         prefix = '' if not cloud_path else cloud_path+'/'
         
         objs, common_prefix, has_next = self.client.get_bucket(self.holder,
