@@ -177,7 +177,7 @@ class VdiskClient(object):
         return self._base_oper('m=user&a=keep_token', {'token': self.token, 
                                                        'dologid': self.dologid})
         
-    def upload_file(self, filename, dir_id, cover, upload_name='',
+    def upload_file(self, filename, dir_id, cover, upload_name=None,
                     maxsize=10, callback=None, dir_=None, 
                     encrypt=False, encrypt_func=None):
         '''
@@ -223,7 +223,7 @@ class VdiskClient(object):
                       'dologid': self.dologid
                       }
             
-            if upload_name and upload_name.decode('utf-8') != os.path.split(filename)[1]:
+            if upload_name:
                 params['file'] = (fp, upload_name)
             
             if callback:

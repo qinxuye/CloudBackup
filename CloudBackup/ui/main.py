@@ -387,7 +387,7 @@ class UI(QtGui.QMainWindow):
                         force_stop = True
                         break
             
-            holder = self.get_holder(account)
+            holder = self.get_holder(account, encrypt)
             encrypt_code = self.get_encrypt_code(account) if encrypt else None
             
             self.vdisk_handler = self.env.setup_vdisk(
@@ -643,7 +643,7 @@ class UI(QtGui.QMainWindow):
                         force_stop = True
                         break
             
-            holder = self.get_holder(access_key)
+            holder = self.get_holder(access_key, encrypt)
             encrypt_code = self.get_encrypt_code(access_key) if encrypt else None
             
             self.s3_handler = self.env.setup_s3(
@@ -899,7 +899,7 @@ class UI(QtGui.QMainWindow):
                         force_stop = True
                         break
             
-            holder = self.get_holder(access_key)
+            holder = self.get_holder(access_key, encrypt)
             encrypt_code = self.get_encrypt_code(access_key) if encrypt else None
             
             self.gs_handler = self.env.setup_gs(
