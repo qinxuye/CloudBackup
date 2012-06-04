@@ -332,7 +332,7 @@ class S3Request(object):
         amz_headers = [(k.lower(), v) for k, v in headers.iteritems() 
                        if k.lower().startswith('x-amz-')]
         amz_headers.sort()
-        return ''.join(['%s:%s' % (k, v) for k, v in amz_headers])
+        return '\n'.join(['%s:%s' % (k, v) for k, v in amz_headers])
     
     def _get_authorization(self, headers):
         params = {
